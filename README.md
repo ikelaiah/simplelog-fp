@@ -19,7 +19,7 @@ A **simple**, **lightweight**, and **easy-to-use** logging library for Free Pasc
 
 - ✅ **Simple** - Easy for new developers to understand and use
 - ✅ **Lightweight** - ~370 lines of code, no bloat
-- ✅ **Maintainable** - Clean code that one person can easily maintain  
+- ✅ **Maintainable** - Clean code and easily maintainable
 - ✅ **Focused** - Does three things well: console, file, and console+file logging
 - ✅ **No dependencies** - Uses only standard Free Pascal units
 - ✅ **Cross-platform** - Works on Windows and Unix systems

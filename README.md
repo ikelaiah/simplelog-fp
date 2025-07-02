@@ -303,7 +303,6 @@ Keep it simple! Any contributions should maintain the core philosophy:
 
 - No feature bloat
 - Easy to understand
-- Maintainable by one person
 - Focused on core logging needs
 
 ## ⚖️ License

@@ -54,11 +54,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Improved error handling for file operations
   - Ensured new files are created after rotation
 
-- **Thread Safety**:
-  - Implemented file-level safety through controlled operations
-  - Removed shared mutable state between threads
-  - Value semantics prevent thread interference
-
 - **Error Handling**:
   - Silent failure for logging errors (doesn't crash applications)
   - Graceful handling of invalid file paths

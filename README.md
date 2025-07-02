@@ -77,7 +77,7 @@ end;
 - **File logging** with automatic directory creation
 - **Dual output** to both console and file simultaneously
 - **Format string support** for all log methods
-- **Thread safety** with file-level safety for multi-threaded applications
+- **Basic file-level safety** for multi-threaded applications
 - **Silent mode** to temporarily disable all logging output
 - **Flush method** for forcing immediate file writes
 

@@ -365,36 +365,8 @@ begin
 end;
 
 function TSimpleLog.EnsureDirectoryExists(const ADir: string): Boolean;
-var
-  ParentDir: string;
 begin
-  Result := True;
-  
-  if DirectoryExists(ADir) then
-    Exit;
-    
-  // Get parent directory
-  ParentDir := ExtractFilePath(ExcludeTrailingPathDelimiter(ADir));
-  
-  // Recursively create parent directories
-  if (ParentDir <> '') and (ParentDir <> ADir) then
-  begin
-    if not EnsureDirectoryExists(ParentDir) then
-    begin
-      Result := False;
-      Exit;
-    end;
-  end;
-  
-  // Create this directory
-  try
-    {$I-}
-    MkDir(ADir);
-    {$I+}
-    Result := IOResult = 0;
-  except
-    Result := False;
-  end;
+  Result := ForceDirectories(ADir);
 end;
 
 end.

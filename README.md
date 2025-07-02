@@ -18,7 +18,7 @@ A **simple**, **lightweight**, and **easy-to-use** logging library for Free Pasc
 ## 🎯 Design Philosophy
 
 - ✅ **Simple** - Easy for new developers to understand and use
-- ✅ **Lightweight** - ~400 lines of code, no bloat
+- ✅ **Lightweight** - ~370 lines of code, no bloat
 - ✅ **Maintainable** - Clean code that one person can easily maintain  
 - ✅ **Focused** - Does three things well: console, file, and console+file logging
 - ✅ **No dependencies** - Uses only standard Free Pascal units
@@ -283,7 +283,7 @@ This is the recommended way to add SimpleLog-FP to your Lazarus projects for the
 
 | Feature | SimpleLog-FP | Complex Logger |
 |---------|--------------|----------------|
-| Lines of code | ~400 | 2000+ |
+| Lines of code | ~370 | 2000+ |
 | Learning curve | Minutes | Hours |
 | Features | 3 core outputs | 20+ features |
 | Maintenance | Easy | Complex |

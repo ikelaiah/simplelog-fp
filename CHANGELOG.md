@@ -30,7 +30,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Method chaining: `TSimpleLog.Both('app.log').SetMinLevel(llInfo).SetMaxFileSize(5*1024*1024)`
   - Format string support for all log methods
   - Silent mode for testing and quiet operations
-  - Flush method for immediate file writes
   - Property access to all configuration options
 
 - **Comprehensive Documentation**:
@@ -40,7 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Best practices and common usage patterns
 
 - **Robust Testing Suite**:
-  - 26 comprehensive test cases covering all functionality
+  - 25 comprehensive test cases covering all functionality
   - File rotation edge cases and validation
   - Multi-output logging verification
   - Method chaining and configuration testing
@@ -59,3 +58,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Graceful handling of invalid file paths
   - Automatic directory creation for log files
   - Robust cross-platform path handling
+
+### Removed
+
+- Removed Flush method (was a no-op, all writes are immediate)

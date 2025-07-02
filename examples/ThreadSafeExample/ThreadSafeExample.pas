@@ -65,8 +65,7 @@ begin
     Threads[i].Free;
   end;
   
-  WriteLn('All threads completed. Flushing...');
-  Log.Flush;
+  WriteLn('All threads completed.');
   
   WriteLn;
   WriteLn('=== Testing Silent Mode ===');

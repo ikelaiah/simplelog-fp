@@ -97,14 +97,6 @@ Logger.Error('Could not save preferences: %s', [errorMessage]);
 Logger.Fatal('Database connection lost, cannot continue');
 ```
 
-### Step 5: Clean Up (Optional)
-
-For file logging, ensure all data is written:
-
-```pascal
-Logger.Flush;
-```
-
 ## Common Scenarios
 
 Here are some common logging scenarios and how to handle them:

@@ -79,7 +79,6 @@ end;
 - **Format string support** for all log methods
 - **Basic file-level safety** for multi-threaded applications
 - **Silent mode** to temporarily disable all logging output
-- **Flush method** for forcing immediate file writes
 
 ### Log Output Format
 
@@ -149,11 +148,6 @@ Log.LogFile := 'myapp.log';          // Set log file path
 Log.MinLevel := llInfo;              // Set minimum log level
 Log.MaxFileSize := 10 * 1024 * 1024; // Set rotation size (10MB)
 Log.Silent := True;                  // Enable/disable silent mode
-```
-
-### 🛠️ Utility Methods
-```pascal
-Log.Flush;                           // Force immediate file write
 ```
 
 ## 📋 Examples
@@ -237,7 +231,6 @@ begin
   Log := TSimpleLog.Both('threaded.log');
   // Use Log from multiple threads with basic safety
   Log.Info('Multi-threaded logging works reliably');
-  Log.Flush; // Force immediate write
 end;
 ```
 

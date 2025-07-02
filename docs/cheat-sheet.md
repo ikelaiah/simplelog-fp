@@ -34,9 +34,6 @@ Logger := Logger.SetMinLevel(llInfo).SetMaxFileSize(5 * 1024 * 1024);
 Logger.Info('Application started');
 Logger.Warning('Low memory: %d MB remaining', [memoryMB]);
 Logger.Error('Failed to save file: %s', [fileName]);
-
-// 4. Cleanup (optional for file logging)
-Logger.Flush;
 ```
 
 ## 🏭 Factory Methods

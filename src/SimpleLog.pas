@@ -48,9 +48,6 @@ type
     function SetMaxFileSize(ASize: Int64): TSimpleLog;
     function SetSilent(ASilent: Boolean): TSimpleLog;
     
-    { Utility methods }
-    procedure Flush;
-    
     { Logging methods }
     procedure Log(ALevel: TLogLevel; const AMessage: string);
     procedure Debug(const AMessage: string);
@@ -365,17 +362,6 @@ end;
 procedure TSimpleLog.Fatal(const AFormat: string; const AArgs: array of const);
 begin
   Fatal(Format(AFormat, AArgs));
-end;
-
-procedure TSimpleLog.Flush;
-begin
-  // Force any buffered file operations to complete
-  // Note: With our current implementation using TextFile,
-  // each write is already flushed immediately after WriteLn
-  // This method is here for API completeness and future buffering
-  
-  // If we had buffered writes, we would flush them here
-  // For now, this is a no-op but provides the API for future use
 end;
 
 function TSimpleLog.EnsureDirectoryExists(const ADir: string): Boolean;

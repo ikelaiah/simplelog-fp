@@ -7,10 +7,13 @@
 [![Version](https://img.shields.io/badge/version-0.5.0-4682b4.svg)](CHANGELOG.md)
 [![No Dependencies](https://img.shields.io/badge/dependencies-none-4e7ddc.svg)](#)
 
+> [!Note]
+> SimpleLog-FP is currently in active development. This is a pre-1.0 release (v0.5.0). The API may change and feedback is welcome!
+
 
 A **simple**, **lightweight**, and **easy-to-use** logging library for Free Pascal applications.
 
-> **Why SimpleLog-FP?** 🤔 Born from the need for a logging library that's actually simple to use and maintain. No feature bloat, no complexity - just clean, reliable logging for console, file, or both.
+> **Why SimpleLog-FP?** 🤔 Built from the need for a logging library that is actually simple to use and maintain. No feature bloat, no complexity - just clean, reliable logging for console, file, or both.
 
 ## 🎯 Design Philosophy
 
@@ -264,6 +267,24 @@ SimpleLog-FP/
 │   └── cheat-sheet.md         # Quick API reference
 └── README.md                  # This file
 ```
+
+## 🧪 Tests
+
+A comprehensive test suite is provided in the `tests/` directory. To run the tests:
+
+- Open `TestRunner.lpi` in the Lazarus IDE or use `lazbuild` (required)
+- Build and run the project to execute all tests
+- Review the output in the IDE or generated log files
+
+## 📦 Lazarus Package
+
+A ready-to-use Lazarus package is included for easy integration:
+
+- Open `packages/lazarus/simplelog.lpk` in the Lazarus IDE
+- Click "Use" → "Add to Project" to add SimpleLog-FP to your project
+- The package will automatically add the correct search paths
+
+This is the recommended way to add SimpleLog-FP to your Lazarus projects for the best experience.
 
 ## 📊 Comparison with Complex Logging Libraries
 

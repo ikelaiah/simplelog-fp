@@ -1,0 +1,113 @@
+# EditorConfig is awesome: https://EditorConfig.org
+
+# top-most EditorConfig file
+root = true
+
+# Global defaults
+[*]
+end_of_line = lf
+insert_final_newline = true
+charset = utf-8
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+# Pascal files
+[*.pas]
+indent_style = space
+indent_size = 2
+
+# Markdown files
+[*.md]
+trim_trailing_whitespace = false
+indent_style = space
+indent_size = 2
+
+# Project files
+[*.lpi]
+indent_style = tab
+
+# Project options
+[*.lps]
+indent_style = tab
+
+# Form files
+[*.lfm]
+indent_style = space
+indent_size = 2
+
+# Project files
+[*.lpr]
+indent_style = space
+indent_size = 2
+
+# Shell scripts
+[*.sh]
+indent_style = tab
+
+# Batch files
+[*.bat]
+indent_style = tab
+
+# YAML files
+[*.yml]
+indent_style = space
+indent_size = 2
+
+# JSON files
+[*.json]
+indent_style = space
+indent_size = 2
+
+# XML files
+[*.xml]
+indent_style = space
+indent_size = 2
+
+# CSS/SCSS files
+[*.css]
+indent_style = space
+indent_size = 2
+[*.scss]
+indent_style = space
+indent_size = 2
+
+# JavaScript/TypeScript files
+[*.js]
+indent_style = space
+indent_size = 2
+[*.ts]
+indent_style = space
+indent_size = 2
+[*.jsx]
+indent_style = space
+indent_size = 2
+[*.tsx]
+indent_style = space
+indent_size = 2
+
+# HTML files
+[*.htm]
+indent_style = space
+indent_size = 2
+[*.html]
+indent_style = space
+indent_size = 2
+
+# Configuration files
+[*.ini]
+indent_style = space
+indent_size = 4
+[*.cfg]
+indent_style = space
+indent_size = 4
+
+# Git ignore
+[.gitignore]
+indent_style = space
+indent_size = 2
+
+# Editor specific settings
+[.idea/*]
+indent_style = space
+indent_size = 2

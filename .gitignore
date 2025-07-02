@@ -1,0 +1,37 @@
+# Free Pascal compiled files
+*.o
+*.ppu
+*.a
+*.compiled
+*.or
+*.rst
+*.rsj
+*.dbg
+*.log
+
+# Lazarus backup files
+*.bak
+*.lps
+backup/
+lib/
+
+# Binary executables
+*.exe
+test_dir/
+
+# Debug files
+*.dbg
+
+# Temporary files
+*~
+*.~*
+*.tmp
+
+# OS-specific files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db 

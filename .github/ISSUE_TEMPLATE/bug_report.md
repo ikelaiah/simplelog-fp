@@ -27,7 +27,7 @@ A clear and concise description of what you expected to happen.
 **Environment:**
  - OS: [e.g. Windows 10]
  - FPC Version: [e.g. 3.2.2]
- - TidyKit Version: [e.g. unreleased]
+ - Version: [e.g. unreleased]
 
 **Additional context**
 Add any other context about the problem here. 

@@ -1,6 +1,6 @@
-# Contributing to TidyKit
+# Contributing to SimpleLog-FP
 
-Thank you for your interest in contributing to TidyKit! We want to make contributing to this project as easy and transparent as possible.
+Thank you for your interest in contributing to SimpleLog-FP! We want to make contributing to this project as easy and transparent as possible.
 
 ## 📝 Code of Conduct
 

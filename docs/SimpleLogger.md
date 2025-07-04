@@ -409,13 +409,32 @@ SimpleLog automatically rotates log files when they reach the maximum size:
 - Renamed to `application.log.1`
 - New `application.log` is created
 
+
 ## Thread Safety
 
-SimpleLog provides basic thread safety through:
+SimpleLog is now fully thread-safe by default:
 
-- Controlled file operations (open/write/close for each message)
-- No shared mutable state between threads
-- Value semantics (each logger instance is independent)
+- All logging operations are protected by a critical section (`TRTLCriticalSection`)
+- You can safely use the same logger instance from multiple threads
+- No log message interleaving or corruption
+- Value semantics: each logger instance is independent
+
+**Resource Management:**
+
+- For most applications, you do not need to call any cleanup methods
+- If you create and destroy many logger instances, call `Logger.Finalize` to release the critical section
+
+**Example:**
+
+```pascal
+var
+  Logger: TSimpleLog;
+begin
+  Logger := TSimpleLog.Both('threaded.log');
+  Logger.Info('Thread-safe logging!');
+  Logger.Finalize; // Optional: releases critical section
+end;
+```
 
 ## Error Handling
 

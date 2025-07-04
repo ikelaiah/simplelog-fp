@@ -4,7 +4,7 @@
 [![Free Pascal](https://img.shields.io/badge/Free%20Pascal-3.2.2+-4e7ddc.svg)](https://www.freepascal.org/)
 [![Lazarus](https://img.shields.io/badge/Lazarus-4.0+-6fa8dc.svg)](https://www.lazarus-ide.org/)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux-6aa84f.svg)](#)
-[![Version](https://img.shields.io/badge/version-0.5.0-4682b4.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.5.1-4682b4.svg)](CHANGELOG.md)
 [![No Dependencies](https://img.shields.io/badge/dependencies-none-4e7ddc.svg)](#)
 
 > [!Note]
@@ -222,17 +222,26 @@ Log.Info('Logging is back on');
 
 ### 🧵 Thread Safety
 ```pascal
-// File operations are inherently safer in most file systems
-// Multiple threads can safely use the same logger instance
-// For high-concurrency scenarios, consider using separate logger instances
+// SimpleLog is thread-safe by default!
+// All logging operations are protected by a critical section.
+// You can safely use the same logger instance from multiple threads.
 var
   Log: TSimpleLog;
 begin
   Log := TSimpleLog.Both('threaded.log');
-  // Use Log from multiple threads with basic safety
+  // Use Log from multiple threads with confidence
   Log.Info('Multi-threaded logging works reliably');
 end;
 ```
+
+// Advanced: If you create/destroy many logger instances, call Finalize to release resources
+var
+  Log: TSimpleLog;
+begin
+  Log := TSimpleLog.Console;
+  // ... use Log ...
+  Log.Finalize; // Optional: releases critical section (not needed for most apps)
+end;
 
 ## 💯 Advanced Record Benefits
 

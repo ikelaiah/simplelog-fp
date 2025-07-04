@@ -26,7 +26,13 @@ type
     FMaxFileSize: Int64;
     FSilent: Boolean;
     FThreadSafe: Boolean;
-    
+    FCriticalSection: TRTLCriticalSection;
+
+    procedure InitCriticalSection;
+    procedure DoneCriticalSection;
+    procedure EnterCriticalSectionIfNeeded;
+    procedure LeaveCriticalSectionIfNeeded;
+
     procedure WriteToConsole(const AMessage: string; ALevel: TLogLevel);
     procedure WriteToFile(const AMessage: string);
     procedure SetConsoleColor(ALevel: TLogLevel);
@@ -40,14 +46,16 @@ type
     class function Console: TSimpleLog; static;
     class function FileLog(const AFileName: string): TSimpleLog; static;
     class function Both(const AFileName: string): TSimpleLog; static;
-    
+
+    procedure Finalize;
+
     { Configuration }
     function SetOutputs(AOutputs: TOutputDestinations): TSimpleLog;
     function SetFile(const AFileName: string): TSimpleLog;
     function SetMinLevel(ALevel: TLogLevel): TSimpleLog;
     function SetMaxFileSize(ASize: Int64): TSimpleLog;
     function SetSilent(ASilent: Boolean): TSimpleLog;
-    
+
     { Logging methods }
     procedure Log(ALevel: TLogLevel; const AMessage: string);
     procedure Debug(const AMessage: string);
@@ -55,14 +63,14 @@ type
     procedure Warning(const AMessage: string);
     procedure Error(const AMessage: string);
     procedure Fatal(const AMessage: string);
-    
+
     { Format string overloads }
     procedure Debug(const AFormat: string; const AArgs: array of const); overload;
     procedure Info(const AFormat: string; const AArgs: array of const); overload;
     procedure Warning(const AFormat: string; const AArgs: array of const); overload;
     procedure Error(const AFormat: string; const AArgs: array of const); overload;
     procedure Fatal(const AFormat: string; const AArgs: array of const); overload;
-    
+
     { Properties }
     property Outputs: TOutputDestinations read FOutputs write FOutputs;
     property LogFile: string read FLogFile write FLogFile;
@@ -71,15 +79,40 @@ type
     property Silent: Boolean read FSilent write FSilent;
   end;
 
+
 implementation
+{ TSimpleLog Thread Safety }
+
+procedure TSimpleLog.InitCriticalSection;
+begin
+  if FThreadSafe then
+    System.InitCriticalSection(FCriticalSection);
+end;
+
+procedure TSimpleLog.DoneCriticalSection;
+begin
+  if FThreadSafe then
+    System.DoneCriticalSection(FCriticalSection);
+end;
+
+procedure TSimpleLog.EnterCriticalSectionIfNeeded;
+begin
+  if FThreadSafe then
+    System.EnterCriticalSection(FCriticalSection);
+end;
+
+procedure TSimpleLog.LeaveCriticalSectionIfNeeded;
+begin
+  if FThreadSafe then
+    System.LeaveCriticalSection(FCriticalSection);
+end;
 
 const
   DEFAULT_MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
   MIN_MAX_FILE_SIZE = 1024; // 1KB minimum to prevent I/O overload
 
 { TSimpleLog }
-
-class function TSimpleLog.Console: TSimpleLog;
+class function TSimpleLog.Console: TSimpleLog; static;
 begin
   Result.FOutputs := [odConsole];
   Result.FLogFile := '';
@@ -87,6 +120,7 @@ begin
   Result.FMaxFileSize := DEFAULT_MAX_FILE_SIZE;
   Result.FSilent := False;
   Result.FThreadSafe := True; // Enable basic thread safety
+  Result.InitCriticalSection;
 end;
 
 class function TSimpleLog.FileLog(const AFileName: string): TSimpleLog;
@@ -97,6 +131,7 @@ begin
   Result.FMaxFileSize := DEFAULT_MAX_FILE_SIZE;
   Result.FSilent := False;
   Result.FThreadSafe := True; // Enable basic thread safety
+  Result.InitCriticalSection;
 end;
 
 class function TSimpleLog.Both(const AFileName: string): TSimpleLog;
@@ -107,6 +142,11 @@ begin
   Result.FMaxFileSize := DEFAULT_MAX_FILE_SIZE;
   Result.FSilent := False;
   Result.FThreadSafe := True; // Enable basic thread safety
+  Result.InitCriticalSection;
+end;
+procedure TSimpleLog.Finalize;
+begin
+  DoneCriticalSection;
 end;
 
 function TSimpleLog.SetOutputs(AOutputs: TOutputDestinations): TSimpleLog;
@@ -293,25 +333,28 @@ procedure TSimpleLog.Log(ALevel: TLogLevel; const AMessage: string);
 var
   FormattedMessage: string;
 begin
-  // Early exit if silent mode is enabled
-  if FSilent then
-    Exit;
-    
-  // Filter by minimum level
-  if ALevel < FMinLevel then
-    Exit;
-    
-  // For basic thread safety, we'll use a simple approach
-  // In most cases, logging contention is minimal
-  FormattedMessage := FormatMessage(ALevel, AMessage);
-  
-  // Output to console if enabled
-  if odConsole in FOutputs then
-    WriteToConsole(FormattedMessage, ALevel);
-    
-  // Output to file if enabled
-  if odFile in FOutputs then
-    WriteToFile(FormattedMessage);
+  EnterCriticalSectionIfNeeded;
+  try
+    // Early exit if silent mode is enabled
+    if FSilent then
+      Exit;
+
+    // Filter by minimum level
+    if ALevel < FMinLevel then
+      Exit;
+
+    FormattedMessage := FormatMessage(ALevel, AMessage);
+
+    // Output to console if enabled
+    if odConsole in FOutputs then
+      WriteToConsole(FormattedMessage, ALevel);
+
+    // Output to file if enabled
+    if odFile in FOutputs then
+      WriteToFile(FormattedMessage);
+  finally
+    LeaveCriticalSectionIfNeeded;
+  end;
 end;
 
 procedure TSimpleLog.Debug(const AMessage: string);

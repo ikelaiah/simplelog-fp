@@ -112,12 +112,15 @@ Logger := Logger
 ## 📁 File Operations
 
 ```pascal
+
 // File rotation happens automatically when MaxFileSize is reached
 // application.log → application.log.1 (backup)
 // New application.log is created
 
-// Ensure data is written to file
-Logger.Flush;
+// Thread safety: All logging is protected by a critical section
+// You can use the same logger from multiple threads
+
+// (Flush is not needed; all writes are immediate)
 
 // Check if logging to file
 if odFile in Logger.Outputs then

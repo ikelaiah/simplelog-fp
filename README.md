@@ -314,3 +314,4 @@ MIT License - see [LICENSE](LICENSE.md) file for details.
     - [Laz Planet - Blogspot](https://lazplanet.blogspot.com/) / [Laz Planet - GitLab](https://lazplanet.gitlab.io/)
     - [Delphi Basics](https://www.delphibasics.co.uk/index.html)
     - @gcarreno for various suggestions and improvements
+- All contributors who have helped improve this project

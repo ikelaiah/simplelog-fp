@@ -1,14 +1,15 @@
 # 📝 SimpleLog-FP 
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-4682b4.svg)](https://opensource.org/licenses/MIT)
-[![Free Pascal](https://img.shields.io/badge/Free%20Pascal-3.2.2+-4e7ddc.svg)](https://www.freepascal.org/)
-[![Lazarus](https://img.shields.io/badge/Lazarus-4.0+-6fa8dc.svg)](https://www.lazarus-ide.org/)
-[![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux-6aa84f.svg)](#)
-[![Version](https://img.shields.io/badge/version-0.5.1-4682b4.svg)](CHANGELOG.md)
-[![No Dependencies](https://img.shields.io/badge/dependencies-none-4e7ddc.svg)](#)
+[![License: MIT](https://img.shields.io/badge/License-MIT-1E3A8A.svg)](https://opensource.org/licenses/MIT)
+[![Free Pascal](https://img.shields.io/badge/Free%20Pascal-3.2.2+-3B82F6.svg)](https://www.freepascal.org/)
+[![Lazarus](https://img.shields.io/badge/Lazarus-4.0+-60A5FA.svg)](https://www.lazarus-ide.org/)
+![Supports Windows](https://img.shields.io/badge/support-Windows-F59E0B?logo=Windows)
+![Supports Linux](https://img.shields.io/badge/support-Linux-F59E0B?logo=Linux)
+[![Version](https://img.shields.io/badge/version-0.5.1-8B5CF6.svg)](CHANGELOG.md)
+![No Dependencies](https://img.shields.io/badge/dependencies-none-10B981.svg)
 
 > [!Note]
-> SimpleLog-FP is currently in active development. This is a pre-1.0 release (v0.5.0). The API may change and feedback is welcome!
+> SimpleLog-FP is currently in active development. This is a pre-1.0 release (v0.5.1). The API may change and feedback is welcome!
 
 
 A **simple**, **lightweight**, and **easy-to-use** logging library for Free Pascal applications.
@@ -18,7 +19,7 @@ A **simple**, **lightweight**, and **easy-to-use** logging library for Free Pasc
 ## 🎯 Design Philosophy
 
 - ✅ **Simple** - Easy for new developers to understand and use
-- ✅ **Lightweight** - ~370 lines of code, no bloat
+- ✅ **Lightweight** - ~415 lines of code, no bloat
 - ✅ **Maintainable** - Clean code and easily maintainable
 - ✅ **Focused** - Does three things well: console, file, and console+file logging
 - ✅ **No dependencies** - Uses only standard Free Pascal units
@@ -77,7 +78,7 @@ end;
 - **File logging** with automatic directory creation
 - **Dual output** to both console and file simultaneously
 - **Format string support** for all log methods
-- **Basic file-level safety** for multi-threaded applications
+- **Thread safety** - protected by critical sections for multi-threaded applications
 - **Silent mode** to temporarily disable all logging output
 
 ### Log Output Format
@@ -234,15 +235,6 @@ begin
 end;
 ```
 
-// Advanced: If you create/destroy many logger instances, call Finalize to release resources
-var
-  Log: TSimpleLog;
-begin
-  Log := TSimpleLog.Console;
-  // ... use Log ...
-  Log.Finalize; // Optional: releases critical section (not needed for most apps)
-end;
-
 ## 💯 Advanced Record Benefits
 
 SimpleLog uses Free Pascal's **advanced records** instead of classes:
@@ -255,10 +247,10 @@ SimpleLog uses Free Pascal's **advanced records** instead of classes:
 
 ## 📁 File Structure
 
-```
+```text
 SimpleLog-FP/
 ├── src/
-│   └── SimpleLog.pas          # Main library (~500 lines)
+│   └── SimpleLog.pas          # Main library (~415 lines)
 ├── examples/
 │   ├── SimpleLogExample/      # Basic usage examples
 │   └── ThreadSafeExample/     # Concurrent logging demo
@@ -292,7 +284,7 @@ This is the recommended way to add SimpleLog-FP to your Lazarus projects for the
 
 | Feature | SimpleLog-FP | Complex Logger |
 |---------|--------------|----------------|
-| Lines of code | ~370 | 2000+ |
+| Lines of code | ~415 | 2000+ |
 | Learning curve | Minutes | Hours |
 | Features | 3 core outputs | 20+ features |
 | Maintenance | Easy | Complex |
@@ -316,3 +308,4 @@ MIT License - see [LICENSE](LICENSE.md) file for details.
 - Inspired by modern CLI frameworks
 - Built with Free Pascal and Lazarus IDE
 - Thanks to the Free Pascal community for their support and contributions
+- Thanks to @gcarreno for suggestions and improvements.

@@ -305,7 +305,12 @@ MIT License - see [LICENSE](LICENSE.md) file for details.
 
 ## 🙏 Acknowledgments
 
-- Inspired by modern CLI frameworks
-- Built with Free Pascal and Lazarus IDE
-- Thanks to the Free Pascal community for their support and contributions
-- Thanks to @gcarreno for suggestions and improvements.
+- [Free Pascal Dev Team](https://www.freepascal.org/) for the Pascal compiler
+- [Lazarus IDE Team](https://www.lazarus-ide.org/) for such an amazing IDE
+- The kind and helpful individuals on various online platforms such as:
+    - [Unofficial Free Pascal discord server](https://discord.com/channels/570025060312547359/570091337173696513)
+    - [Free Pascal & Lazarus forum](https://forum.lazarus.freepascal.org/index.php)
+    - [Tweaking4All Delphi, Lazarus, Free Pascal forum](https://www.tweaking4all.com/forum/delphi-lazarus-free-pascal/)
+    - [Laz Planet - Blogspot](https://lazplanet.blogspot.com/) / [Laz Planet - GitLab](https://lazplanet.gitlab.io/)
+    - [Delphi Basics](https://www.delphibasics.co.uk/index.html)
+    - @gcarreno for various suggestions and improvements

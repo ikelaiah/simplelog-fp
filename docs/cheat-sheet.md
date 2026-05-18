@@ -70,6 +70,10 @@ Logger := Logger.SetFile('new-log.log');
 // Silent mode (suppress all output)
 Logger := Logger.SetSilent(True);
 Logger := Logger.SetSilent(False);              // Re-enable output
+
+// Console colors
+Logger := Logger.SetUseColors(False);           // Plain console output
+Logger := Logger.SetUseColors(True);            // Re-enable colors
 ```
 
 ## 📊 Log Levels
@@ -100,7 +104,8 @@ Logger.Log(llInfo, 'Custom log level message');
 Logger := TSimpleLog.Both('application.log')
   .SetMinLevel(llInfo)
   .SetMaxFileSize(5 * 1024 * 1024)
-  .SetSilent(False);
+  .SetSilent(False)
+  .SetUseColors(True);
 
 // Reconfigure existing logger
 Logger := Logger
@@ -114,11 +119,11 @@ Logger := Logger
 ```pascal
 
 // File rotation happens automatically when MaxFileSize is reached
-// application.log -> application_20260518_191500_123.log (backup)
+// application.log -> application.log.1 (bounded backup)
 // New application.log is created
 
-// Thread safety: Logging operations are serialized internally
-// You can use the same logger from multiple threads
+// Thread safety: Logging calls and individual configuration methods are serialized
+// Configure before sharing a logger between threads for predictable behavior
 
 // (Flush is not needed; all writes are immediate)
 
@@ -131,6 +136,7 @@ WriteLn('Current log file: ', Logger.LogFile);
 WriteLn('Max file size: ', Logger.MaxFileSize);
 WriteLn('Min level: ', Ord(Logger.MinLevel));
 WriteLn('Silent mode: ', Logger.Silent);
+WriteLn('Use colors: ', Logger.UseColors);
 ```
 
 ## 🎯 Common Patterns
@@ -152,6 +158,10 @@ AppLogger := TSimpleLog.Both('app.log')
 // Silent logger for testing
 TestLogger := TSimpleLog.Console.SetSilent(True);
 TestLogger.Info('This will not be displayed');
+
+// Plain console logger for CI or redirected output
+PlainLogger := TSimpleLog.Console.SetUseColors(False);
+PlainLogger.Info('No color control codes are written');
 
 // Multiple loggers for different components
 UILogger := TSimpleLog.FileLog('ui.log').SetMinLevel(llInfo);

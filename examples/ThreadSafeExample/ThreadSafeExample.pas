@@ -73,12 +73,12 @@ begin
   Log.Info('This message will appear');
   
   // Enable silent mode
-  Log.SetSilent(True);
+  Log := Log.SetSilent(True);
   Log.Info('This message will NOT appear (silent mode)');
   Log.Error('This error will NOT appear (silent mode)');
   
   // Disable silent mode
-  Log.SetSilent(False);
+  Log := Log.SetSilent(False);
   Log.Info('Silent mode disabled - this message appears again');
   
   WriteLn('Example completed. Check threaded.log for file output.');

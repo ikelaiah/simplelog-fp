@@ -65,6 +65,12 @@ begin
   Log.Error('Error: A serious problem occurred');
   Log.Fatal('Fatal: Critical error, program should probably stop');
   WriteLn;
+
+  // Example 7: Plain console output without colors
+  WriteLn('7. Plain console output:');
+  Log := TSimpleLog.Console.SetUseColors(False);
+  Log.Info('This message is written without console colors');
+  WriteLn;
   
   WriteLn('Demo completed! Check the log files created.');
   

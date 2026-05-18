@@ -9,11 +9,11 @@
 [![Lazarus](https://img.shields.io/badge/Lazarus-4.0+-60A5FA.svg)](https://www.lazarus-ide.org/)
 ![Supports Windows](https://img.shields.io/badge/support-Windows-F59E0B?logo=Windows)
 ![Supports Linux](https://img.shields.io/badge/support-Linux-F59E0B?logo=Linux)
-[![Version](https://img.shields.io/badge/version-0.6.0-8B5CF6.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.7.0-8B5CF6.svg)](CHANGELOG.md)
 ![No Dependencies](https://img.shields.io/badge/dependencies-none-10B981.svg)
 
 > [!Note]
-> SimpleLog-FP is currently in active development. This is a pre-1.0 release (v0.6.0). The API may change and feedback is welcome!
+> SimpleLog-FP is currently in active development. This is a pre-1.0 release (v0.7.0). The API may change and feedback is welcome!
 
 
 A **simple**, **lightweight**, and **easy-to-use** logging library for Free Pascal applications.
@@ -23,7 +23,7 @@ A **simple**, **lightweight**, and **easy-to-use** logging library for Free Pasc
 ## 🎯 Design Philosophy
 
 - ✅ **Simple** - Easy for new developers to understand and use
-- ✅ **Lightweight** - ~430 lines of code, no bloat
+- ✅ **Lightweight** - ~460 lines of code, no bloat
 - ✅ **Maintainable** - Clean code and easily maintainable
 - ✅ **Focused** - Does three things well: console, file, and console+file logging
 - ✅ **No dependencies** - Uses only standard Free Pascal units
@@ -78,7 +78,7 @@ end;
 
 - **5 log levels**: Debug, Info, Warning, Error, Fatal
 - **Timestamped messages**: Each log entry includes precise timestamp with milliseconds
-- **Colored console output** with appropriate colors per level
+- **Optional colored console output** with appropriate colors per level
 - **File logging** with automatic directory creation
 - **Dual output** to both console and file simultaneously
 - **Format string support** for all log methods
@@ -108,6 +108,7 @@ All log messages follow a consistent, readable format:
 - **Log level filtering** - set minimum level to reduce noise
 - **File rotation** - automatic rotation when files exceed size limit
 - **Custom file paths** with automatic directory creation
+- **Color control** - disable console colors for plain terminal output
 
 ### 🌍 Cross-Platform
 - **Windows**: Console colors via Windows API
@@ -143,17 +144,20 @@ Log := TSimpleLog.Console
   .SetOutputs([odConsole, odFile])  // Enable both outputs
   .SetFile('app.log')               // Set log file
   .SetMaxFileSize(5 * 1024 * 1024)  // 5MB rotation limit
-  .SetSilent(False);                // Enable/disable all logging
+  .SetSilent(False)                 // Enable/disable all logging
+  .SetUseColors(True);              // Enable/disable console colors
 ```
 
-### 🔧 Properties
+### 🔧 Read-Only Properties
 ```pascal
-Log.Outputs := [odConsole, odFile];  // Set output destinations
-Log.LogFile := 'myapp.log';          // Set log file path
-Log.MinLevel := llInfo;              // Set minimum log level
-Log.MaxFileSize := 10 * 1024 * 1024; // Set rotation size (10MB)
-Log.Silent := True;                  // Enable/disable silent mode
+WriteLn(Log.LogFile);                // Current log file path
+WriteLn(Ord(Log.MinLevel));          // Current minimum log level
+WriteLn(Log.MaxFileSize);            // Current rotation size
+WriteLn(Log.Silent);                 // Current silent mode
+WriteLn(Log.UseColors);              // Current console color mode
 ```
+
+Use the `Set...` methods for configuration. This keeps validation in one place and avoids direct property writes bypassing rules such as the minimum rotation size.
 
 ## 📋 Examples
 
@@ -212,24 +216,31 @@ Log := TSimpleLog.Console.SetMinLevel(llDebug);
 // Rotate when file exceeds 1MB
 Log := TSimpleLog.FileLog('big.log').SetMaxFileSize(1024 * 1024);
 Log.Info('This will rotate when file gets too big');
+// Rotation keeps one bounded backup: big.log.1
 ```
 
 ### 🔇 Silent Mode
 ```pascal
 // Temporarily disable all logging
-Log.SetSilent(True);
+Log := Log.SetSilent(True);
 Log.Error('This error will not appear anywhere');
 
 // Re-enable logging
-Log.SetSilent(False);
+Log := Log.SetSilent(False);
 Log.Info('Logging is back on');
+```
+
+### 🎨 Plain Console Output
+```pascal
+// Useful for redirected output, CI logs, or terminals without color support
+Log := TSimpleLog.Console.SetUseColors(False);
+Log.Info('No color control codes are written');
 ```
 
 ### 🧵 Thread Safety
 ```pascal
-// SimpleLog is thread-safe by default!
-// Logging operations are serialized internally.
-// You can safely use the same logger instance from multiple threads.
+// Logging operations and individual configuration methods are serialized internally.
+// Configure the logger before sharing it between threads for predictable behavior.
 var
   Log: TSimpleLog;
 begin
@@ -254,7 +265,7 @@ SimpleLog uses Free Pascal's **advanced records** instead of classes:
 ```text
 SimpleLog-FP/
 ├── src/
-│   └── SimpleLog.pas          # Main library (~430 lines)
+│   └── SimpleLog.pas          # Main library (~460 lines)
 ├── examples/
 │   ├── SimpleLogExample/      # Basic usage examples
 │   └── ThreadSafeExample/     # Concurrent logging demo
@@ -288,7 +299,7 @@ This is the recommended way to add SimpleLog-FP to your Lazarus projects for the
 
 | Feature | SimpleLog-FP | Complex Logger |
 |---------|--------------|----------------|
-| Lines of code | ~430 | 2000+ |
+| Lines of code | ~460 | 2000+ |
 | Learning curve | Minutes | Hours |
 | Features | 3 core outputs | 20+ features |
 | Maintenance | Easy | Complex |

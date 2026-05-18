@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Release [0.7.0] - 2026-05-18
+
+### Added
+
+- `SetUseColors` and `UseColors` to allow plain console output without color control codes.
+
+### Changed
+
+- Configuration is now method-first: public configuration properties are read-only and should be changed through `Set...` methods.
+- Factory initialization now uses one shared internal helper for consistent defaults.
+- File rotation now keeps one bounded backup (`app.log.1`) instead of timestamped backups.
+- Logging calls and individual configuration methods are serialized with the same internal lock.
+- Documentation now describes thread safety more precisely and recommends configuring loggers before sharing them across threads.
+- Expanded FPCUnit coverage for `LogFmt`, bounded rotation replacement, minimum file-size clamping, log format shape, invalid file targets, and color opt-out.
+
+### Removed
+
+- Removed the no-op `Finalize` method from the public API.
+
 ## Release [0.6.0] - 2026-05-18
 
 ### Added

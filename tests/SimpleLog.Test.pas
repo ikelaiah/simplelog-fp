@@ -67,11 +67,19 @@ type
     procedure Test23_LargeMessage;
     procedure Test24_DirectoryCreation;
     
-    { Property tests }
-    procedure Test25_PropertyAccess;
+    { Configuration readback tests }
+    procedure Test25_ConfigurationReadback;
 
     { Format filtering tests }
     procedure Test26_FilteredFormatStringDoesNotFormat;
+
+    { v0.7.0 coverage gaps }
+    procedure Test27_DirectLogFmt;
+    procedure Test28_MinFileSizeClamp;
+    procedure Test29_LogFormatShape;
+    procedure Test30_InvalidPathDoesNotRaise;
+    procedure Test31_RotationReplacesBoundedBackup;
+    procedure Test32_UseColorsCanBeDisabled;
   end;
 
 implementation
@@ -133,6 +141,23 @@ begin
   end;
 
   RemoveDir(ADir);
+end;
+
+function CountMatchingFiles(const APattern: string): Integer;
+var
+  SearchRec: TSearchRec;
+begin
+  Result := 0;
+  if FindFirst(APattern, faAnyFile, SearchRec) = 0 then
+  begin
+    try
+      repeat
+        Inc(Result);
+      until FindNext(SearchRec) <> 0;
+    finally
+      FindClose(SearchRec);
+    end;
+  end;
 end;
 
 procedure TSimpleLogTest.SetUp;
@@ -411,7 +436,7 @@ begin
   
   // Count log files (original + rotated)
   RotatedFiles := 0;
-  if FindFirst(FTestDir + PathDelim + '*.log', faAnyFile, SearchRec) = 0 then
+  if FindFirst(FLogFile + '*', faAnyFile, SearchRec) = 0 then
   begin
     try
       repeat
@@ -422,7 +447,8 @@ begin
     end;
   end;
   
-  AssertTrue('File rotation should occur when size exceeded', RotatedFiles > 1);
+  AssertTrue('File rotation should create a backup file', FileExists(FLogFile + '.1'));
+  AssertTrue('File rotation should keep one bounded backup', RotatedFiles <= 2);
 end;
 
 procedure TSimpleLogTest.Test14_SetOutputs;
@@ -476,7 +502,7 @@ begin
   AssertFalse('Log file should not exist when silent mode is enabled',
     FileExists(FLogFile));
     
-  Log.SetSilent(False);
+  Log := Log.SetSilent(False);
   Log.Info('Not silent test - should be logged');
   
   AssertTrue('Log file should exist when silent mode is disabled',
@@ -569,7 +595,7 @@ begin
   
   // Count log files
   RotatedFiles := 0;
-  if FindFirst(FTestDir + PathDelim + '*.log', faAnyFile, SearchRec) = 0 then
+  if FindFirst(FLogFile + '*', faAnyFile, SearchRec) = 0 then
   begin
     try
       repeat
@@ -580,7 +606,8 @@ begin
     end;
   end;
   
-  AssertTrue('File rotation should create multiple log files', RotatedFiles > 1);
+  AssertTrue('File rotation should create one backup file', FileExists(FLogFile + '.1'));
+  AssertTrue('File rotation should keep one bounded backup', RotatedFiles <= 2);
 end;
 
 // Thread safety tests
@@ -630,7 +657,7 @@ begin
   AssertTrue('Log file should exist for normal logging', FileExists(FLogFile));
   
   // Enable silent mode
-  Log.Silent := True;
+  Log := Log.SetSilent(True);
   Log.Info('Silent message - should not appear');
   
   FileContent := TStringList.Create;
@@ -645,7 +672,7 @@ begin
   end;
   
   // Disable silent mode
-  Log.Silent := False;
+  Log := Log.SetSilent(False);
   Log.Info('Resumed message');
   
   FileContent := TStringList.Create;
@@ -731,27 +758,24 @@ end;
 
 // Property tests
 
-procedure TSimpleLogTest.Test25_PropertyAccess;
+procedure TSimpleLogTest.Test25_ConfigurationReadback;
 var
   Log: TSimpleLog;
 begin
-  Log := TSimpleLog.Console;
-  
-  // Test property access
-  Log.Outputs := [odFile];
-  AssertTrue('Outputs property should be settable', odFile in Log.Outputs);
-  
-  Log.LogFile := FLogFile;
-  AssertTrue('LogFile property should be settable', Log.LogFile = FLogFile);
-  
-  Log.MinLevel := llError;
-  AssertTrue('MinLevel property should be settable', Log.MinLevel = llError);
-  
-  Log.MaxFileSize := 2048;
-  AssertTrue('MaxFileSize property should be settable', Log.MaxFileSize = 2048);
-  
-  Log.Silent := True;
-  AssertTrue('Silent property should be settable', Log.Silent = True);
+  Log := TSimpleLog.Console
+    .SetOutputs([odFile])
+    .SetFile(FLogFile)
+    .SetMinLevel(llError)
+    .SetMaxFileSize(2048)
+    .SetSilent(True)
+    .SetUseColors(False);
+
+  AssertTrue('Outputs property should reflect configured outputs', Log.Outputs = [odFile]);
+  AssertTrue('LogFile property should reflect configured file', Log.LogFile = FLogFile);
+  AssertTrue('MinLevel property should reflect configured level', Log.MinLevel = llError);
+  AssertTrue('MaxFileSize property should reflect configured size', Log.MaxFileSize = 2048);
+  AssertTrue('Silent property should reflect configured silent mode', Log.Silent);
+  AssertFalse('UseColors property should reflect configured color mode', Log.UseColors);
 end;
 
 procedure TSimpleLogTest.Test26_FilteredFormatStringDoesNotFormat;
@@ -765,6 +789,142 @@ begin
   Log := TSimpleLog.FileLog(FLogFile).SetSilent(True);
   Log.Fatal('Silent value: %d', ['not an integer']);
   AssertFalse('Silent formatted message should not create a log file', FileExists(FLogFile));
+end;
+
+procedure TSimpleLogTest.Test27_DirectLogFmt;
+var
+  Log: TSimpleLog;
+  FileContent: TStringList;
+begin
+  Log := TSimpleLog.FileLog(FLogFile);
+  Log.LogFmt(llWarning, 'Direct %s %d', ['format', 7]);
+
+  FileContent := TStringList.Create;
+  try
+    FileContent.LoadFromFile(FLogFile);
+    AssertTrue('Direct LogFmt should write the formatted message',
+      Pos('Direct format 7', FileContent.Text) > 0);
+    AssertTrue('Direct LogFmt should use the requested level',
+      Pos('[WARNING]', FileContent.Text) > 0);
+  finally
+    FileContent.Free;
+  end;
+end;
+
+procedure TSimpleLogTest.Test28_MinFileSizeClamp;
+var
+  Log: TSimpleLog;
+begin
+  Log := TSimpleLog.FileLog(FLogFile).SetMaxFileSize(1);
+  AssertTrue('SetMaxFileSize should clamp very small values to 1KB',
+    Log.MaxFileSize = 1024);
+end;
+
+procedure TSimpleLogTest.Test29_LogFormatShape;
+var
+  Log: TSimpleLog;
+  FileContent: TStringList;
+  Line: string;
+
+  function IsDigitAt(AIndex: Integer): Boolean;
+  begin
+    Result := (Length(Line) >= AIndex) and (Line[AIndex] in ['0'..'9']);
+  end;
+
+begin
+  Log := TSimpleLog.FileLog(FLogFile);
+  Log.Info('Shape test');
+
+  FileContent := TStringList.Create;
+  try
+    FileContent.LoadFromFile(FLogFile);
+    AssertTrue('Log file should contain one line', FileContent.Count >= 1);
+    Line := FileContent[0];
+
+    AssertTrue('Log line should contain the expected message suffix',
+      Pos('] [INFO] Shape test', Line) > 0);
+    AssertTrue('Log line should start with [', (Length(Line) >= 1) and (Line[1] = '['));
+    AssertTrue('Log timestamp should contain a 4 digit year',
+      IsDigitAt(2) and IsDigitAt(3) and IsDigitAt(4) and IsDigitAt(5));
+    AssertTrue('Log timestamp should use yyyy-mm-dd date separators',
+      (Length(Line) >= 11) and (Line[6] = '-') and (Line[9] = '-'));
+    AssertTrue('Log timestamp should use hh:nn:ss.zzz time separators',
+      (Length(Line) >= 25) and (Line[12] = ' ') and (Line[15] = ':') and
+      (Line[18] = ':') and (Line[21] = '.') and (Line[25] = ']'));
+  finally
+    FileContent.Free;
+  end;
+end;
+
+procedure TSimpleLogTest.Test30_InvalidPathDoesNotRaise;
+var
+  Log: TSimpleLog;
+begin
+  Log := TSimpleLog.FileLog(FTestDir);
+  Log.Info('This attempts to write to a directory path');
+  AssertTrue('Invalid file target should not remove the test directory',
+    DirectoryExists(FTestDir));
+end;
+
+procedure TSimpleLogTest.Test31_RotationReplacesBoundedBackup;
+var
+  Log: TSimpleLog;
+  FirstBackup: TStringList;
+  SecondBackup: TStringList;
+  LargeMessage1: string;
+  LargeMessage2: string;
+  FirstBackupText: string;
+  i: Integer;
+begin
+  Log := TSimpleLog.FileLog(FLogFile).SetMaxFileSize(1024);
+
+  LargeMessage1 := '';
+  LargeMessage2 := '';
+  for i := 1 to 80 do
+  begin
+    LargeMessage1 := LargeMessage1 + 'first rotation payload ';
+    LargeMessage2 := LargeMessage2 + 'second rotation payload ';
+  end;
+
+  Log.Info(LargeMessage1);
+  Log.Info('create first backup');
+
+  AssertTrue('First rotation should create bounded backup', FileExists(FLogFile + '.1'));
+  FirstBackup := TStringList.Create;
+  try
+    FirstBackup.LoadFromFile(FLogFile + '.1');
+    FirstBackupText := FirstBackup.Text;
+  finally
+    FirstBackup.Free;
+  end;
+
+  Log.Info(LargeMessage2);
+  Log.Info('create second backup');
+
+  AssertTrue('Second rotation should keep bounded backup', FileExists(FLogFile + '.1'));
+  AssertTrue('Rotation should keep only current file and one backup',
+    CountMatchingFiles(FLogFile + '*') <= 2);
+
+  SecondBackup := TStringList.Create;
+  try
+    SecondBackup.LoadFromFile(FLogFile + '.1');
+    AssertFalse('Second rotation should replace the previous backup',
+      SecondBackup.Text = FirstBackupText);
+  finally
+    SecondBackup.Free;
+  end;
+end;
+
+procedure TSimpleLogTest.Test32_UseColorsCanBeDisabled;
+var
+  Log: TSimpleLog;
+begin
+  Log := TSimpleLog.Console.SetUseColors(False);
+  AssertFalse('UseColors should be disabled', Log.UseColors);
+  Log.Info('Color disabled console smoke test');
+
+  Log := Log.SetUseColors(True);
+  AssertTrue('UseColors should be enabled', Log.UseColors);
 end;
 
 initialization

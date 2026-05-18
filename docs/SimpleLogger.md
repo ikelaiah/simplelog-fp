@@ -2,7 +2,7 @@
 
 ## Overview
 
-`SimpleLog` is a minimal, modern logging component for Free Pascal applications. It provides formatted log messages with timestamps, log levels, automatic file rotation, cross-platform colored console output, and multiple output destinations.
+`SimpleLog` is a minimal, modern logging component for Free Pascal applications. It provides formatted log messages with timestamps, log levels, bounded file rotation, optional cross-platform colored console output, and multiple output destinations.
 
 ## Philosophy
 
@@ -26,7 +26,7 @@ You can expect:
 - One-line setup for common scenarios
 - Method chaining for fluent configuration
 - Automatic file rotation and directory creation
-- Cross-platform colored console output
+- Optional cross-platform colored console output
 
 You won't find:
 
@@ -153,7 +153,7 @@ begin
   Logger := TSimpleLog.FileLog('application.log')
     .SetMaxFileSize(5 * 1024 * 1024);  // 5MB
     
-  // Files are rotated to timestamped backups such as application_20260518_191500_123.log
+  // Files are rotated to one bounded backup: application.log.1
   Logger.Info('This will be logged with automatic rotation');
 end;
 ```
@@ -173,7 +173,7 @@ end;
 
 ## Features
 
-- **Log Levels**: Debug, Info, Warning, Error, and Fatal levels with cross-platform console colors
+- **Log Levels**: Debug, Info, Warning, Error, and Fatal levels with optional cross-platform console colors
 - **Multiple Destinations**: Log to console, files, or both simultaneously  
 - **File Rotation**: Automatic log file rotation when size limits are reached
 - **Method Chaining**: Fluent API for configuration (SetMinLevel, SetMaxFileSize, etc.)
@@ -185,6 +185,7 @@ end;
 - **Automatic Directory Creation**: Creates log directories automatically
 - **Timestamped Output**: All log messages include precise timestamps
 - **Silent Mode**: Ability to suppress all output for testing or quiet operations
+- **Color Control**: Ability to disable console colors for plain output
 - **Advanced Record**: TSimpleLog is an advanced record with value semantics
 
 ## Advanced Usage
@@ -198,7 +199,8 @@ begin
   Logger := TSimpleLog.Both('application.log')
     .SetMinLevel(llInfo)
     .SetMaxFileSize(10 * 1024 * 1024)  // 10MB
-    .SetSilent(False);
+    .SetSilent(False)
+    .SetUseColors(True);
     
   Logger.Info('Logger configured with method chaining');
 end;
@@ -292,6 +294,7 @@ function SetFile(const AFileName: string): TSimpleLog;
 function SetMinLevel(ALevel: TLogLevel): TSimpleLog;
 function SetMaxFileSize(ASize: Int64): TSimpleLog;
 function SetSilent(ASilent: Boolean): TSimpleLog;
+function SetUseColors(AUseColors: Boolean): TSimpleLog;
 ```
 
 **Examples:**
@@ -303,7 +306,8 @@ begin
   Logger := TSimpleLog.Both('application.log')
     .SetMinLevel(llInfo)
     .SetMaxFileSize(5 * 1024 * 1024)  // 5MB
-    .SetSilent(False);
+    .SetSilent(False)
+    .SetUseColors(True);
 end;
 ```
 
@@ -351,12 +355,15 @@ end;
 
 #### Properties
 
+Properties are read-only. Use configuration methods to change logger behavior.
+
 ```pascal
-property Outputs: TOutputDestinations read FOutputs write FOutputs;
-property LogFile: string read FLogFile write FLogFile;
-property MinLevel: TLogLevel read FMinLevel write FMinLevel;
-property MaxFileSize: Int64 read FMaxFileSize write FMaxFileSize;
-property Silent: Boolean read FSilent write FSilent;
+property Outputs: TOutputDestinations read FOutputs;
+property LogFile: string read FLogFile;
+property MinLevel: TLogLevel read FMinLevel;
+property MaxFileSize: Int64 read FMaxFileSize;
+property Silent: Boolean read FSilent;
+property UseColors: Boolean read FUseColors;
 ```
 
 ### Enumerations
@@ -394,30 +401,31 @@ MIN_MAX_FILE_SIZE = 1024; // 1KB minimum
 
 SimpleLog automatically rotates log files when they reach the maximum size:
 
-1. When a file reaches `MaxFileSize`, it is renamed to a timestamped backup
+1. When a file reaches `MaxFileSize`, it is renamed to `filename.1`
 2. A new file is created with the original name
-3. Existing backups are kept, with a numeric suffix added if a timestamp collision occurs
+3. Any previous `.1` backup is replaced
 
 **Example:**
 
 - `application.log` reaches 10MB
-- Renamed to `application_20260518_191500_123.log`
+- Renamed to `application.log.1`
 - New `application.log` is created
 
 
 ## Thread Safety
 
-SimpleLog is thread-safe by default:
+SimpleLog serializes logging operations internally:
 
-- Logging operations are serialized by an internal unit-level lock
-- You can safely use the same logger instance, or copies of it, from multiple threads
-- No log message interleaving or corruption
+- Logging operations use an internal unit-level lock
+- Individual configuration methods also use the same lock
+- Configure a logger before sharing it between threads for the most predictable behavior
+- No log message interleaving or corruption during logging calls
 - Record value semantics and method chaining remain lightweight
 
 **Resource Management:**
 
 - You do not need to call any cleanup methods
-- `Logger.Finalize` is retained only for source compatibility with v0.5.1 and does nothing
+- `Finalize` is no longer part of the public API
 
 **Example:**
 
@@ -489,8 +497,8 @@ end;
 ## Limitations
 
 1. SimpleLog is designed for single-process applications
-2. File rotation uses one timestamped backup per rotation
-3. Thread safety serializes logging operations, not arbitrary external property changes
+2. File rotation keeps one bounded `.1` backup
+3. Multi-step reconfiguration chains are not atomic across threads
 4. Cross-platform support requires Free Pascal compilation
 
 ## Migration from Logger-FP

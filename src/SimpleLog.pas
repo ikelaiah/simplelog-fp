@@ -24,7 +24,9 @@ type
     FMinLevel: TLogLevel;
     FMaxFileSize: Int64;
     FSilent: Boolean;
+    FUseColors: Boolean;
 
+    class function CreateLogger(AOutputs: TOutputDestinations; const AFileName: string): TSimpleLog; static;
     function ShouldLog(ALevel: TLogLevel): Boolean;
     procedure WriteToConsole(const AMessage: string; ALevel: TLogLevel);
     procedure WriteToFile(const AMessage: string);
@@ -33,7 +35,7 @@ type
     function GetLogLevelStr(ALevel: TLogLevel): string;
     function FormatMessage(ALevel: TLogLevel; const AMessage: string): string;
     procedure CheckFileRotation;
-    function GetRotationFileName: string;
+    function GetBackupFileName: string;
     function EnsureDirectoryExists(const ADir: string): Boolean;
   public
     { Factory methods }
@@ -41,14 +43,13 @@ type
     class function FileLog(const AFileName: string): TSimpleLog; static;
     class function Both(const AFileName: string): TSimpleLog; static;
 
-    procedure Finalize;
-
     { Configuration }
     function SetOutputs(AOutputs: TOutputDestinations): TSimpleLog;
     function SetFile(const AFileName: string): TSimpleLog;
     function SetMinLevel(ALevel: TLogLevel): TSimpleLog;
     function SetMaxFileSize(ASize: Int64): TSimpleLog;
     function SetSilent(ASilent: Boolean): TSimpleLog;
+    function SetUseColors(AUseColors: Boolean): TSimpleLog;
 
     { Logging methods }
     procedure Log(ALevel: TLogLevel; const AMessage: string);
@@ -67,11 +68,12 @@ type
     procedure Fatal(const AFormat: string; const AArgs: array of const); overload;
 
     { Properties }
-    property Outputs: TOutputDestinations read FOutputs write FOutputs;
-    property LogFile: string read FLogFile write FLogFile;
-    property MinLevel: TLogLevel read FMinLevel write FMinLevel;
-    property MaxFileSize: Int64 read FMaxFileSize write FMaxFileSize;
-    property Silent: Boolean read FSilent write FSilent;
+    property Outputs: TOutputDestinations read FOutputs;
+    property LogFile: string read FLogFile;
+    property MinLevel: TLogLevel read FMinLevel;
+    property MaxFileSize: Int64 read FMaxFileSize;
+    property Silent: Boolean read FSilent;
+    property UseColors: Boolean read FUseColors;
   end;
 
 
@@ -95,70 +97,99 @@ begin
 end;
 
 { TSimpleLog }
-class function TSimpleLog.Console: TSimpleLog; static;
+class function TSimpleLog.CreateLogger(AOutputs: TOutputDestinations; const AFileName: string): TSimpleLog; static;
 begin
-  Result.FOutputs := [odConsole];
-  Result.FLogFile := '';
+  Result.FOutputs := AOutputs;
+  Result.FLogFile := AFileName;
   Result.FMinLevel := llDebug;
   Result.FMaxFileSize := DEFAULT_MAX_FILE_SIZE;
   Result.FSilent := False;
+  Result.FUseColors := True;
+end;
+
+class function TSimpleLog.Console: TSimpleLog; static;
+begin
+  Result := CreateLogger([odConsole], '');
 end;
 
 class function TSimpleLog.FileLog(const AFileName: string): TSimpleLog;
 begin
-  Result.FOutputs := [odFile];
-  Result.FLogFile := AFileName;
-  Result.FMinLevel := llDebug;
-  Result.FMaxFileSize := DEFAULT_MAX_FILE_SIZE;
-  Result.FSilent := False;
+  Result := CreateLogger([odFile], AFileName);
 end;
 
 class function TSimpleLog.Both(const AFileName: string): TSimpleLog;
 begin
-  Result.FOutputs := [odConsole, odFile];
-  Result.FLogFile := AFileName;
-  Result.FMinLevel := llDebug;
-  Result.FMaxFileSize := DEFAULT_MAX_FILE_SIZE;
-  Result.FSilent := False;
-end;
-
-procedure TSimpleLog.Finalize;
-begin
-  // Kept for source compatibility with v0.5.1; no per-instance cleanup is needed.
+  Result := CreateLogger([odConsole, odFile], AFileName);
 end;
 
 function TSimpleLog.SetOutputs(AOutputs: TOutputDestinations): TSimpleLog;
 begin
-  FOutputs := AOutputs;
-  Result := Self;
+  EnterLogLock;
+  try
+    FOutputs := AOutputs;
+    Result := Self;
+  finally
+    LeaveLogLock;
+  end;
 end;
 
 function TSimpleLog.SetFile(const AFileName: string): TSimpleLog;
 begin
-  FLogFile := AFileName;
-  Result := Self;
+  EnterLogLock;
+  try
+    FLogFile := AFileName;
+    Result := Self;
+  finally
+    LeaveLogLock;
+  end;
 end;
 
 function TSimpleLog.SetMinLevel(ALevel: TLogLevel): TSimpleLog;
 begin
-  FMinLevel := ALevel;
-  Result := Self;
+  EnterLogLock;
+  try
+    FMinLevel := ALevel;
+    Result := Self;
+  finally
+    LeaveLogLock;
+  end;
 end;
 
 function TSimpleLog.SetMaxFileSize(ASize: Int64): TSimpleLog;
 begin
-  // Enforce minimum file size to prevent I/O overload
-  if ASize < MIN_MAX_FILE_SIZE then
-    FMaxFileSize := MIN_MAX_FILE_SIZE
-  else
-    FMaxFileSize := ASize;
-  Result := Self;
+  EnterLogLock;
+  try
+    // Enforce minimum file size to prevent I/O overload
+    if ASize < MIN_MAX_FILE_SIZE then
+      FMaxFileSize := MIN_MAX_FILE_SIZE
+    else
+      FMaxFileSize := ASize;
+    Result := Self;
+  finally
+    LeaveLogLock;
+  end;
 end;
 
 function TSimpleLog.SetSilent(ASilent: Boolean): TSimpleLog;
 begin
-  FSilent := ASilent;
-  Result := Self;
+  EnterLogLock;
+  try
+    FSilent := ASilent;
+    Result := Self;
+  finally
+    LeaveLogLock;
+  end;
+end;
+
+function TSimpleLog.SetUseColors(AUseColors: Boolean): TSimpleLog;
+begin
+  EnterLogLock;
+  try
+    FUseColors := AUseColors;
+    Result := Self;
+  finally
+    LeaveLogLock;
+  end;
 end;
 
 function TSimpleLog.ShouldLog(ALevel: TLogLevel): Boolean;
@@ -168,6 +199,9 @@ end;
 
 procedure TSimpleLog.SetConsoleColor(ALevel: TLogLevel);
 begin
+  if not FUseColors then
+    Exit;
+
   {$IFDEF WINDOWS}
   case ALevel of
     llDebug: SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 8);    // Gray
@@ -190,6 +224,9 @@ end;
 
 procedure TSimpleLog.ResetConsoleColor;
 begin
+  if not FUseColors then
+    Exit;
+
   {$IFDEF WINDOWS}
   SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 7); // Default
   {$ENDIF}
@@ -222,26 +259,16 @@ end;
 procedure TSimpleLog.WriteToConsole(const AMessage: string; ALevel: TLogLevel);
 begin
   SetConsoleColor(ALevel);
-  WriteLn(AMessage);
-  ResetConsoleColor;
+  try
+    WriteLn(AMessage);
+  finally
+    ResetConsoleColor;
+  end;
 end;
 
-function TSimpleLog.GetRotationFileName: string;
-var
-  Counter: Integer;
-  Extension: string;
-  Stamp: string;
+function TSimpleLog.GetBackupFileName: string;
 begin
-  Extension := ExtractFileExt(FLogFile);
-  Stamp := FormatDateTime('_yyyymmdd_hhnnss_zzz', Now);
-  Result := ChangeFileExt(FLogFile, Stamp + Extension);
-  Counter := 1;
-
-  while FileExists(Result) do
-  begin
-    Result := ChangeFileExt(FLogFile, Format('%s_%d%s', [Stamp, Counter, Extension]));
-    Inc(Counter);
-  end;
+  Result := FLogFile + '.1';
 end;
 
 procedure TSimpleLog.CheckFileRotation;
@@ -265,13 +292,15 @@ begin
     Exit;
   end;
 
-  // If file size exceeds the limit, create a backup and start fresh
+  // If file size exceeds the limit, keep one bounded backup and start fresh.
   if CurrentFileSize >= FMaxFileSize then
   begin
-    BackupFileName := GetRotationFileName;
+    BackupFileName := GetBackupFileName;
     
     try
-      // Simply rename the current file to create a backup
+      if FileExists(BackupFileName) then
+        SysUtils.DeleteFile(BackupFileName);
+
       if RenameFile(FLogFile, BackupFileName) then
       begin
         // File was successfully renamed, new writes will create a fresh file
@@ -421,6 +450,7 @@ begin
 end;
 
 initialization
+  GLogLock := Default(TRTLCriticalSection);
   System.InitCriticalSection(GLogLock);
 
 finalization

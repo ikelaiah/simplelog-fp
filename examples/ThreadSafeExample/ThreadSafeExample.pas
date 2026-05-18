@@ -42,8 +42,8 @@ var
   i: Integer;
 begin
   WriteLn('=== Concurrent Logging & Silent Mode Example ===');
-  WriteLn('Note: Multiple threads logging concurrently with basic thread safety.');
-  WriteLn('SimpleLog handles concurrent access reasonably well for most use cases.');
+  WriteLn('Note: Multiple threads logging concurrently through SimpleLog.');
+  WriteLn('SimpleLog serializes logging operations internally.');
   WriteLn;
   
   // Initialize logger for both console and file
@@ -82,5 +82,4 @@ begin
   Log.Info('Silent mode disabled - this message appears again');
   
   WriteLn('Example completed. Check threaded.log for file output.');
-  WriteLn('Note: Output may show interleaved messages due to concurrent access.');
 end.

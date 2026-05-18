@@ -7,20 +7,20 @@ uses
 
 procedure TestBasicFunctionality;
 var
-  Log: SimpleLog;
+  Log: TSimpleLog;
 begin
   WriteLn('Testing basic functionality...');
   
   // Test console logging
-  Log := SimpleLog.Console;
+  Log := TSimpleLog.Console;
   Log.Info('Console test message');
   
   // Test file logging
-  Log := SimpleLog.FileLog('test.log');
+  Log := TSimpleLog.FileLog('test.log');
   Log.Info('File test message');
   
   // Test both
-  Log := SimpleLog.Both('both.log');
+  Log := TSimpleLog.Both('both.log');
   Log.Info('Both console and file message');
   
   WriteLn('✓ Basic functionality tests passed');
@@ -28,11 +28,11 @@ end;
 
 procedure TestLogLevels;
 var
-  Log: SimpleLog;
+  Log: TSimpleLog;
 begin
   WriteLn('Testing log levels...');
   
-  Log := SimpleLog.Console;
+  Log := TSimpleLog.Console;
   
   // Test all levels
   Log.Debug('Debug level');
@@ -46,11 +46,11 @@ end;
 
 procedure TestFiltering;
 var
-  Log: SimpleLog;
+  Log: TSimpleLog;
 begin
   WriteLn('Testing level filtering...');
   
-  Log := SimpleLog.Console.SetMinLevel(llWarning);
+  Log := TSimpleLog.Console.SetMinLevel(llWarning);
   
   WriteLn('Should see only Warning, Error, Fatal:');
   Log.Debug('This should NOT appear');
@@ -64,11 +64,11 @@ end;
 
 procedure TestFormatStrings;
 var
-  Log: SimpleLog;
+  Log: TSimpleLog;
 begin
   WriteLn('Testing format strings...');
   
-  Log := SimpleLog.Console;
+  Log := TSimpleLog.Console;
   
   Log.Info('String: %s, Integer: %d, Float: %.2f', ['test', 42, 3.14159]);
   Log.Warning('Multiple values: %s=%d, %s=%.1f', ['count', 10, 'percentage', 85.5]);
@@ -78,11 +78,11 @@ end;
 
 procedure TestMethodChaining;
 var
-  Log: SimpleLog;
+  Log: TSimpleLog;
 begin
   WriteLn('Testing method chaining...');
   
-  Log := SimpleLog.Console
+  Log := TSimpleLog.Console
     .SetMinLevel(llInfo)
     .SetFile('chained_test.log')
     .SetOutputs([odConsole, odFile]);

@@ -153,7 +153,7 @@ begin
   Logger := TSimpleLog.FileLog('application.log')
     .SetMaxFileSize(5 * 1024 * 1024);  // 5MB
     
-  // Files will be rotated as: application.log -> application.log.1
+  // Files are rotated to timestamped backups such as application_20260518_191500_123.log
   Logger.Info('This will be logged with automatic rotation');
 end;
 ```
@@ -179,7 +179,7 @@ end;
 - **Method Chaining**: Fluent API for configuration (SetMinLevel, SetMaxFileSize, etc.)
 - **Zero Dependencies**: Uses only standard Free Pascal units (Classes, SysUtils)
 - **Cross-Platform**: Works on Windows, Linux, macOS without changes
-- **Thread-Safe**: Basic thread safety through controlled file operations
+- **Thread-Safe**: Logging operations are serialized internally
 - **Error Handling**: Robust error recovery to prevent logging failures from crashing applications
 - **Format String Support**: Convenient format string overloads for all log methods
 - **Automatic Directory Creation**: Creates log directories automatically
@@ -311,6 +311,7 @@ end;
 
 ```pascal
 procedure Log(ALevel: TLogLevel; const AMessage: string);
+procedure LogFmt(ALevel: TLogLevel; const AFormat: string; const AArgs: array of const);
 procedure Debug(const AMessage: string);
 procedure Info(const AMessage: string);
 procedure Warning(const AMessage: string);
@@ -327,6 +328,8 @@ procedure Warning(const AFormat: string; const AArgs: array of const); overload;
 procedure Error(const AFormat: string; const AArgs: array of const); overload;
 procedure Fatal(const AFormat: string; const AArgs: array of const); overload;
 ```
+
+Formatted overloads are skipped without calling `Format` when the message is below `MinLevel` or `Silent` is enabled.
 
 **Examples:**
 
@@ -345,14 +348,6 @@ begin
   Logger.Error('Failed to save file: %s', [errorMessage]);
 end;
 ```
-
-#### Utility Methods
-
-```pascal
-procedure Flush;
-```
-
-Ensures all log data is written to files.
 
 #### Properties
 
@@ -399,30 +394,30 @@ MIN_MAX_FILE_SIZE = 1024; // 1KB minimum
 
 SimpleLog automatically rotates log files when they reach the maximum size:
 
-1. When a file reaches `MaxFileSize`, it's renamed with a `.1` extension
+1. When a file reaches `MaxFileSize`, it is renamed to a timestamped backup
 2. A new file is created with the original name
-3. Only one backup file is kept (`.1`)
+3. Existing backups are kept, with a numeric suffix added if a timestamp collision occurs
 
 **Example:**
 
 - `application.log` reaches 10MB
-- Renamed to `application.log.1`
+- Renamed to `application_20260518_191500_123.log`
 - New `application.log` is created
 
 
 ## Thread Safety
 
-SimpleLog is now fully thread-safe by default:
+SimpleLog is thread-safe by default:
 
-- All logging operations are protected by a critical section (`TRTLCriticalSection`)
-- You can safely use the same logger instance from multiple threads
+- Logging operations are serialized by an internal unit-level lock
+- You can safely use the same logger instance, or copies of it, from multiple threads
 - No log message interleaving or corruption
-- Value semantics: each logger instance is independent
+- Record value semantics and method chaining remain lightweight
 
 **Resource Management:**
 
-- For most applications, you do not need to call any cleanup methods
-- If you create and destroy many logger instances, call `Logger.Finalize` to release the critical section
+- You do not need to call any cleanup methods
+- `Logger.Finalize` is retained only for source compatibility with v0.5.1 and does nothing
 
 **Example:**
 
@@ -432,7 +427,6 @@ var
 begin
   Logger := TSimpleLog.Both('threaded.log');
   Logger.Info('Thread-safe logging!');
-  Logger.Finalize; // Optional: releases critical section
 end;
 ```
 
@@ -492,20 +486,11 @@ begin
 end;
 ```
 
-### 5. Call Flush When Necessary
-
-For file logging, you may want to ensure data is written immediately:
-
-```pascal
-Logger.Info('Critical operation completed');
-Logger.Flush;  // Ensure data is written immediately
-```
-
 ## Limitations
 
 1. SimpleLog is designed for single-process applications
-2. Only one backup file is kept during rotation (`.1` extension)
-3. Basic thread safety through controlled file operations
+2. File rotation uses one timestamped backup per rotation
+3. Thread safety serializes logging operations, not arbitrary external property changes
 4. Cross-platform support requires Free Pascal compilation
 
 ## Migration from Logger-FP

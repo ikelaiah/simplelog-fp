@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Release [0.6.0] - 2026-05-18
+
+### Added
+
+- `LogFmt` for explicit level-based formatted logging.
+- Regression coverage for filtered and silent formatted log calls.
+- Real multi-threaded logging coverage in the FPCUnit suite.
+
+### Changed
+
+- Simplified thread safety by using one unit-level lock instead of storing a critical section inside each `TSimpleLog` record.
+  - Record copies and method chaining no longer copy critical-section internals.
+  - `Finalize` is retained as a no-op compatibility method; no per-instance cleanup is required.
+- Formatted logging overloads now skip `Format` when the message would be filtered by `MinLevel` or suppressed by `Silent`.
+- File rotation now uses millisecond timestamped backup names and avoids overwriting an existing backup from the same timestamp.
+- Tests run faster by removing artificial sleeps and debug output.
+
+### Fixed
+
+- Fixed stale documentation that still referenced `Flush` and `.1` rotation backups.
+- Fixed the standalone manual test program to use `TSimpleLog`.
+- Improved test cleanup so nested temporary log directories are removed.
 
 ## Release [0.5.1] - 2025-07-04
 

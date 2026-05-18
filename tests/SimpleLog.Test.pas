@@ -69,9 +69,71 @@ type
     
     { Property tests }
     procedure Test25_PropertyAccess;
+
+    { Format filtering tests }
+    procedure Test26_FilteredFormatStringDoesNotFormat;
   end;
 
 implementation
+
+type
+  TLogWorkerThread = class(TThread)
+  private
+    FLogger: TSimpleLog;
+    FMessageCount: Integer;
+    FThreadIndex: Integer;
+  protected
+    procedure Execute; override;
+  public
+    constructor Create(ALogger: TSimpleLog; AThreadIndex, AMessageCount: Integer);
+  end;
+
+constructor TLogWorkerThread.Create(ALogger: TSimpleLog; AThreadIndex, AMessageCount: Integer);
+begin
+  inherited Create(True);
+  FreeOnTerminate := False;
+  FLogger := ALogger;
+  FThreadIndex := AThreadIndex;
+  FMessageCount := AMessageCount;
+  Start;
+end;
+
+procedure TLogWorkerThread.Execute;
+var
+  i: Integer;
+begin
+  for i := 1 to FMessageCount do
+    FLogger.Info('Thread %d message %d', [FThreadIndex, i]);
+end;
+
+procedure DeleteDirectoryTree(const ADir: string);
+var
+  SearchRec: TSearchRec;
+  ItemPath: string;
+begin
+  if not DirectoryExists(ADir) then
+    Exit;
+
+  if FindFirst(IncludeTrailingPathDelimiter(ADir) + '*', faAnyFile, SearchRec) = 0 then
+  begin
+    try
+      repeat
+        if (SearchRec.Name = '.') or (SearchRec.Name = '..') then
+          Continue;
+
+        ItemPath := IncludeTrailingPathDelimiter(ADir) + SearchRec.Name;
+        if (SearchRec.Attr and faDirectory) <> 0 then
+          DeleteDirectoryTree(ItemPath)
+        else
+          DeleteFile(ItemPath);
+      until FindNext(SearchRec) <> 0;
+    finally
+      FindClose(SearchRec);
+    end;
+  end;
+
+  RemoveDir(ADir);
+end;
 
 procedure TSimpleLogTest.SetUp;
 var
@@ -94,64 +156,21 @@ begin
   
   // Clean up any existing test directory
   if DirectoryExists(FTestDir) then
-  begin
     CleanupLogFiles;
-    RemoveDir(FTestDir);
-  end;
   
   // Create test directory
   if not CreateDir(FTestDir) then
     raise Exception.CreateFmt('Could not create test directory: %s', [FTestDir]);
-    
-  // Small delay to ensure file system operations are complete
-  Sleep(100);
 end;
 
 procedure TSimpleLogTest.TearDown;
 begin
-  // Small delay to ensure file system operations are complete
-  Sleep(100);
-  
-  // Clean up test files
   CleanupLogFiles;
-  
-  // Another small delay
-  Sleep(100);
-  
-  // Finally remove test directory
-  if DirectoryExists(FTestDir) then
-  begin
-    RemoveDir(FTestDir);
-  end;
 end;
 
 procedure TSimpleLogTest.CleanupLogFiles;
-var
-  SearchRec: TSearchRec;
-  FullPath: string;
-  RetryCount: Integer;
 begin
-  // Small delay to ensure file system operations are complete
-  Sleep(100);
-  
-  // Then attempt to delete files
-  if FindFirst(FTestDir + PathDelim + '*.log', faAnyFile, SearchRec) = 0 then
-  begin
-    try
-      repeat
-        FullPath := FTestDir + PathDelim + SearchRec.Name;
-        RetryCount := 0;
-        while (not DeleteFile(FullPath)) and (RetryCount < 3) do
-        begin
-          // If delete fails, wait longer and try again
-          Inc(RetryCount);
-          Sleep(100);
-        end;
-      until FindNext(SearchRec) <> 0;
-    finally
-      FindClose(SearchRec);
-    end;
-  end;
+  DeleteDirectoryTree(FTestDir);
 end;
 
 // Factory method tests
@@ -376,7 +395,6 @@ var
   RotatedFiles: Integer;
   i: Integer;
   LargeMessage: string;
-  FileContent: TStringList;
 begin
   Log := TSimpleLog.FileLog(FLogFile).SetMaxFileSize(1200); // 1.2KB - above minimum threshold
   
@@ -385,42 +403,11 @@ begin
   for i := 1 to 10 do
     LargeMessage := LargeMessage + 'This is a large message to trigger rotation. ';
   
-  // Debug: Show message size
-  WriteLn('DEBUG: LargeMessage length = ', Length(LargeMessage));
-  
   // Write multiple messages to ensure we exceed the 1.2KB limit
   Log.Info(LargeMessage);
-  
-  // Check file size after first message
-  if FileExists(FLogFile) then
-  begin
-    FileContent := TStringList.Create;
-    try
-      FileContent.LoadFromFile(FLogFile);
-      WriteLn('DEBUG: File size after 1st message = ', Length(FileContent.Text));
-    finally
-      FileContent.Free;
-    end;
-  end;
-  
   Log.Info(LargeMessage);
   Log.Info(LargeMessage);
   Log.Info(LargeMessage); // This should definitely trigger rotation
-  
-  // Debug: Check what happened after all messages
-  WriteLn('DEBUG: After all messages:');
-  if FileExists(FLogFile) then
-  begin
-    FileContent := TStringList.Create;
-    try
-      FileContent.LoadFromFile(FLogFile);
-      WriteLn('DEBUG: Current log file size = ', Length(FileContent.Text));
-    finally
-      FileContent.Free;
-    end;
-  end else begin
-    WriteLn('DEBUG: Original log file does not exist after all messages!');
-  end;
   
   // Count log files (original + rotated)
   RotatedFiles := 0;
@@ -428,7 +415,6 @@ begin
   begin
     try
       repeat
-        WriteLn('DEBUG: Found log file: ', SearchRec.Name, ' (size: ', SearchRec.Size, ')');
         Inc(RotatedFiles);
       until FindNext(SearchRec) <> 0;
     finally
@@ -436,7 +422,6 @@ begin
     end;
   end;
   
-  WriteLn('DEBUG: Total log files found = ', RotatedFiles);
   AssertTrue('File rotation should occur when size exceeded', RotatedFiles > 1);
 end;
 
@@ -601,24 +586,31 @@ end;
 // Thread safety tests
 
 procedure TSimpleLogTest.Test20_ThreadSafety;
+const
+  THREAD_COUNT = 4;
+  MESSAGES_PER_THREAD = 50;
 var
   Log: TSimpleLog;
   i: Integer;
+  Threads: array[1..THREAD_COUNT] of TLogWorkerThread;
   FileContent: TStringList;
 begin
   Log := TSimpleLog.FileLog(FLogFile);
   
-  // Simulate concurrent access by rapid sequential logging
-  for i := 1 to 100 do
+  for i := 1 to THREAD_COUNT do
+    Threads[i] := TLogWorkerThread.Create(Log, i, MESSAGES_PER_THREAD);
+
+  for i := 1 to THREAD_COUNT do
   begin
-    Log.Info('Thread safety test message %d', [i]);
+    Threads[i].WaitFor;
+    Threads[i].Free;
   end;
   
   FileContent := TStringList.Create;
   try
     FileContent.LoadFromFile(FLogFile);
-    AssertTrue('Log file should contain multiple messages',
-      FileContent.Count >= 100);
+    AssertEquals('Log file should contain every threaded message',
+      THREAD_COUNT * MESSAGES_PER_THREAD, FileContent.Count);
   finally
     FileContent.Free;
   end;
@@ -760,6 +752,19 @@ begin
   
   Log.Silent := True;
   AssertTrue('Silent property should be settable', Log.Silent = True);
+end;
+
+procedure TSimpleLogTest.Test26_FilteredFormatStringDoesNotFormat;
+var
+  Log: TSimpleLog;
+begin
+  Log := TSimpleLog.FileLog(FLogFile).SetMinLevel(llFatal);
+  Log.Info('Filtered value: %d', ['not an integer']);
+  AssertFalse('Filtered formatted message should not create a log file', FileExists(FLogFile));
+
+  Log := TSimpleLog.FileLog(FLogFile).SetSilent(True);
+  Log.Fatal('Silent value: %d', ['not an integer']);
+  AssertFalse('Silent formatted message should not create a log file', FileExists(FLogFile));
 end;
 
 initialization

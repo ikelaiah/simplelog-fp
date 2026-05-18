@@ -5,11 +5,11 @@
 [![Lazarus](https://img.shields.io/badge/Lazarus-4.0+-60A5FA.svg)](https://www.lazarus-ide.org/)
 ![Supports Windows](https://img.shields.io/badge/support-Windows-F59E0B?logo=Windows)
 ![Supports Linux](https://img.shields.io/badge/support-Linux-F59E0B?logo=Linux)
-[![Version](https://img.shields.io/badge/version-0.5.1-8B5CF6.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.6.0-8B5CF6.svg)](CHANGELOG.md)
 ![No Dependencies](https://img.shields.io/badge/dependencies-none-10B981.svg)
 
 > [!Note]
-> SimpleLog-FP is currently in active development. This is a pre-1.0 release (v0.5.1). The API may change and feedback is welcome!
+> SimpleLog-FP is currently in active development. This is a pre-1.0 release (v0.6.0). The API may change and feedback is welcome!
 
 
 A **simple**, **lightweight**, and **easy-to-use** logging library for Free Pascal applications.
@@ -19,7 +19,7 @@ A **simple**, **lightweight**, and **easy-to-use** logging library for Free Pasc
 ## 🎯 Design Philosophy
 
 - ✅ **Simple** - Easy for new developers to understand and use
-- ✅ **Lightweight** - ~415 lines of code, no bloat
+- ✅ **Lightweight** - ~430 lines of code, no bloat
 - ✅ **Maintainable** - Clean code and easily maintainable
 - ✅ **Focused** - Does three things well: console, file, and console+file logging
 - ✅ **No dependencies** - Uses only standard Free Pascal units
@@ -78,7 +78,7 @@ end;
 - **File logging** with automatic directory creation
 - **Dual output** to both console and file simultaneously
 - **Format string support** for all log methods
-- **Thread safety** - protected by critical sections for multi-threaded applications
+- **Thread safety** - logging operations are serialized for multi-threaded applications
 - **Silent mode** to temporarily disable all logging output
 
 ### Log Output Format
@@ -224,7 +224,7 @@ Log.Info('Logging is back on');
 ### 🧵 Thread Safety
 ```pascal
 // SimpleLog is thread-safe by default!
-// All logging operations are protected by a critical section.
+// Logging operations are serialized internally.
 // You can safely use the same logger instance from multiple threads.
 var
   Log: TSimpleLog;
@@ -250,7 +250,7 @@ SimpleLog uses Free Pascal's **advanced records** instead of classes:
 ```text
 SimpleLog-FP/
 ├── src/
-│   └── SimpleLog.pas          # Main library (~415 lines)
+│   └── SimpleLog.pas          # Main library (~430 lines)
 ├── examples/
 │   ├── SimpleLogExample/      # Basic usage examples
 │   └── ThreadSafeExample/     # Concurrent logging demo
@@ -284,7 +284,7 @@ This is the recommended way to add SimpleLog-FP to your Lazarus projects for the
 
 | Feature | SimpleLog-FP | Complex Logger |
 |---------|--------------|----------------|
-| Lines of code | ~415 | 2000+ |
+| Lines of code | ~430 | 2000+ |
 | Learning curve | Minutes | Hours |
 | Features | 3 core outputs | 20+ features |
 | Maintenance | Easy | Complex |

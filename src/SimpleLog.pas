@@ -6,8 +6,7 @@ interface
 
 uses
   Classes, SysUtils
-  {$IFDEF WINDOWS}, Windows {$ENDIF}
-  {$IFDEF UNIX}, BaseUnix {$ENDIF};
+  {$IFDEF WINDOWS}, Windows {$ENDIF};
 
 type
   { Log level enumeration }
@@ -25,14 +24,8 @@ type
     FMinLevel: TLogLevel;
     FMaxFileSize: Int64;
     FSilent: Boolean;
-    FThreadSafe: Boolean;
-    FCriticalSection: TRTLCriticalSection;
 
-    procedure InitCriticalSection;
-    procedure DoneCriticalSection;
-    procedure EnterCriticalSectionIfNeeded;
-    procedure LeaveCriticalSectionIfNeeded;
-
+    function ShouldLog(ALevel: TLogLevel): Boolean;
     procedure WriteToConsole(const AMessage: string; ALevel: TLogLevel);
     procedure WriteToFile(const AMessage: string);
     procedure SetConsoleColor(ALevel: TLogLevel);
@@ -40,6 +33,7 @@ type
     function GetLogLevelStr(ALevel: TLogLevel): string;
     function FormatMessage(ALevel: TLogLevel; const AMessage: string): string;
     procedure CheckFileRotation;
+    function GetRotationFileName: string;
     function EnsureDirectoryExists(const ADir: string): Boolean;
   public
     { Factory methods }
@@ -58,6 +52,7 @@ type
 
     { Logging methods }
     procedure Log(ALevel: TLogLevel; const AMessage: string);
+    procedure LogFmt(ALevel: TLogLevel; const AFormat: string; const AArgs: array of const);
     procedure Debug(const AMessage: string);
     procedure Info(const AMessage: string);
     procedure Warning(const AMessage: string);
@@ -81,35 +76,23 @@ type
 
 
 implementation
-{ TSimpleLog Thread Safety }
-
-procedure TSimpleLog.InitCriticalSection;
-begin
-  if FThreadSafe then
-    System.InitCriticalSection(FCriticalSection);
-end;
-
-procedure TSimpleLog.DoneCriticalSection;
-begin
-  if FThreadSafe then
-    System.DoneCriticalSection(FCriticalSection);
-end;
-
-procedure TSimpleLog.EnterCriticalSectionIfNeeded;
-begin
-  if FThreadSafe then
-    System.EnterCriticalSection(FCriticalSection);
-end;
-
-procedure TSimpleLog.LeaveCriticalSectionIfNeeded;
-begin
-  if FThreadSafe then
-    System.LeaveCriticalSection(FCriticalSection);
-end;
 
 const
   DEFAULT_MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
   MIN_MAX_FILE_SIZE = 1024; // 1KB minimum to prevent I/O overload
+
+var
+  GLogLock: TRTLCriticalSection;
+
+procedure EnterLogLock;
+begin
+  System.EnterCriticalSection(GLogLock);
+end;
+
+procedure LeaveLogLock;
+begin
+  System.LeaveCriticalSection(GLogLock);
+end;
 
 { TSimpleLog }
 class function TSimpleLog.Console: TSimpleLog; static;
@@ -119,8 +102,6 @@ begin
   Result.FMinLevel := llDebug;
   Result.FMaxFileSize := DEFAULT_MAX_FILE_SIZE;
   Result.FSilent := False;
-  Result.FThreadSafe := True; // Enable basic thread safety
-  Result.InitCriticalSection;
 end;
 
 class function TSimpleLog.FileLog(const AFileName: string): TSimpleLog;
@@ -130,8 +111,6 @@ begin
   Result.FMinLevel := llDebug;
   Result.FMaxFileSize := DEFAULT_MAX_FILE_SIZE;
   Result.FSilent := False;
-  Result.FThreadSafe := True; // Enable basic thread safety
-  Result.InitCriticalSection;
 end;
 
 class function TSimpleLog.Both(const AFileName: string): TSimpleLog;
@@ -141,12 +120,11 @@ begin
   Result.FMinLevel := llDebug;
   Result.FMaxFileSize := DEFAULT_MAX_FILE_SIZE;
   Result.FSilent := False;
-  Result.FThreadSafe := True; // Enable basic thread safety
-  Result.InitCriticalSection;
 end;
+
 procedure TSimpleLog.Finalize;
 begin
-  DoneCriticalSection;
+  // Kept for source compatibility with v0.5.1; no per-instance cleanup is needed.
 end;
 
 function TSimpleLog.SetOutputs(AOutputs: TOutputDestinations): TSimpleLog;
@@ -181,6 +159,11 @@ function TSimpleLog.SetSilent(ASilent: Boolean): TSimpleLog;
 begin
   FSilent := ASilent;
   Result := Self;
+end;
+
+function TSimpleLog.ShouldLog(ALevel: TLogLevel): Boolean;
+begin
+  Result := (not FSilent) and (ALevel >= FMinLevel);
 end;
 
 procedure TSimpleLog.SetConsoleColor(ALevel: TLogLevel);
@@ -223,6 +206,8 @@ begin
     llWarning: Result := 'WARNING';
     llError: Result := 'ERROR';
     llFatal: Result := 'FATAL';
+  else
+    Result := 'UNKNOWN';
   end;
 end;
 
@@ -239,6 +224,24 @@ begin
   SetConsoleColor(ALevel);
   WriteLn(AMessage);
   ResetConsoleColor;
+end;
+
+function TSimpleLog.GetRotationFileName: string;
+var
+  Counter: Integer;
+  Extension: string;
+  Stamp: string;
+begin
+  Extension := ExtractFileExt(FLogFile);
+  Stamp := FormatDateTime('_yyyymmdd_hhnnss_zzz', Now);
+  Result := ChangeFileExt(FLogFile, Stamp + Extension);
+  Counter := 1;
+
+  while FileExists(Result) do
+  begin
+    Result := ChangeFileExt(FLogFile, Format('%s_%d%s', [Stamp, Counter, Extension]));
+    Inc(Counter);
+  end;
 end;
 
 procedure TSimpleLog.CheckFileRotation;
@@ -263,10 +266,9 @@ begin
   end;
 
   // If file size exceeds the limit, create a backup and start fresh
-  if CurrentFileSize > FMaxFileSize then
+  if CurrentFileSize >= FMaxFileSize then
   begin
-    BackupFileName := ChangeFileExt(FLogFile, 
-      FormatDateTime('_yyyymmdd_hhnnss', Now) + ExtractFileExt(FLogFile));
+    BackupFileName := GetRotationFileName;
     
     try
       // Simply rename the current file to create a backup
@@ -320,7 +322,7 @@ begin
       
       // Write the message with newline
       FileStream.Write(PChar(AMessage)^, Length(AMessage));
-      FileStream.Write(PChar(#13#10)^, 2); // Write newline characters
+      FileStream.Write(PChar(LineEnding)^, Length(LineEnding));
     finally
       FileStream.Free;
     end;
@@ -333,14 +335,12 @@ procedure TSimpleLog.Log(ALevel: TLogLevel; const AMessage: string);
 var
   FormattedMessage: string;
 begin
-  EnterCriticalSectionIfNeeded;
-  try
-    // Early exit if silent mode is enabled
-    if FSilent then
-      Exit;
+  if not ShouldLog(ALevel) then
+    Exit;
 
-    // Filter by minimum level
-    if ALevel < FMinLevel then
+  EnterLogLock;
+  try
+    if not ShouldLog(ALevel) then
       Exit;
 
     FormattedMessage := FormatMessage(ALevel, AMessage);
@@ -353,8 +353,16 @@ begin
     if odFile in FOutputs then
       WriteToFile(FormattedMessage);
   finally
-    LeaveCriticalSectionIfNeeded;
+    LeaveLogLock;
   end;
+end;
+
+procedure TSimpleLog.LogFmt(ALevel: TLogLevel; const AFormat: string; const AArgs: array of const);
+begin
+  if not ShouldLog(ALevel) then
+    Exit;
+
+  Log(ALevel, Format(AFormat, AArgs));
 end;
 
 procedure TSimpleLog.Debug(const AMessage: string);
@@ -384,32 +392,38 @@ end;
 
 procedure TSimpleLog.Debug(const AFormat: string; const AArgs: array of const);
 begin
-  Debug(Format(AFormat, AArgs));
+  LogFmt(llDebug, AFormat, AArgs);
 end;
 
 procedure TSimpleLog.Info(const AFormat: string; const AArgs: array of const);
 begin
-  Info(Format(AFormat, AArgs));
+  LogFmt(llInfo, AFormat, AArgs);
 end;
 
 procedure TSimpleLog.Warning(const AFormat: string; const AArgs: array of const);
 begin
-  Warning(Format(AFormat, AArgs));
+  LogFmt(llWarning, AFormat, AArgs);
 end;
 
 procedure TSimpleLog.Error(const AFormat: string; const AArgs: array of const);
 begin
-  Error(Format(AFormat, AArgs));
+  LogFmt(llError, AFormat, AArgs);
 end;
 
 procedure TSimpleLog.Fatal(const AFormat: string; const AArgs: array of const);
 begin
-  Fatal(Format(AFormat, AArgs));
+  LogFmt(llFatal, AFormat, AArgs);
 end;
 
 function TSimpleLog.EnsureDirectoryExists(const ADir: string): Boolean;
 begin
   Result := ForceDirectories(ADir);
 end;
+
+initialization
+  System.InitCriticalSection(GLogLock);
+
+finalization
+  System.DoneCriticalSection(GLogLock);
 
 end.

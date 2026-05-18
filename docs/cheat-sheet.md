@@ -114,10 +114,10 @@ Logger := Logger
 ```pascal
 
 // File rotation happens automatically when MaxFileSize is reached
-// application.log → application.log.1 (backup)
+// application.log -> application_20260518_191500_123.log (backup)
 // New application.log is created
 
-// Thread safety: All logging is protected by a critical section
+// Thread safety: Logging operations are serialized internally
 // You can use the same logger from multiple threads
 
 // (Flush is not needed; all writes are immediate)
@@ -185,10 +185,6 @@ begin
     .SetMinLevel(llInfo)
     .SetMaxFileSize(10 * 1024 * 1024);
 end;
-
-// ✅ DO: Call Flush for critical logging
-Logger.Fatal('Critical system error detected');
-Logger.Flush;  // Ensure message is written immediately
 
 // ✅ DO: Use different loggers for different purposes
 var

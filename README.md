@@ -293,7 +293,7 @@ A comprehensive test suite is provided in the `tests/` directory. To run the tes
   ```bash
   tests/TestRunner.exe --all --format=plainnotiming
   ```
-- CI also builds and runs the test suite with plain FPC on Windows and Ubuntu.
+- CI also builds and runs the test suite with Lazarus on Windows and plain FPC on Ubuntu.
 
 ## 📦 Lazarus Package
 

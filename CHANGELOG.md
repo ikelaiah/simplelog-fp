@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Added GitHub Actions CI for Windows and Ubuntu FPC test builds.
+- Added GitHub Actions CI for Windows Lazarus and Ubuntu FPC test builds.
 - Added a maintainer release checklist for version checks, local validation, CI, and tagging.
 
 ### Changed

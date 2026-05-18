@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Release [0.8.0] - 2026-05-18
+
+### Added
+
+- Added a short `docs/getting-started.md` guide focused on the common first-use workflow.
+
+### Changed
+
+- Simplified the public API by making formatted logging available through level overloads only.
+- Refined test helpers and behavior tests around formatted logging so they match the public API new users see.
+- Updated README and user manual references for the v0.8.0 developer-experience pass.
+
+### Removed
+
+- Removed public `LogFmt`; formatted logging remains available through `Debug`, `Info`, `Warning`, `Error`, and `Fatal` overloads.
+
 ## Release [0.7.0] - 2026-05-18
 
 ### Added

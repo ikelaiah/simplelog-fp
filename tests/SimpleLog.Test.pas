@@ -17,6 +17,7 @@ type
   private
     FTestDir: string;
     FLogFile: string;
+    procedure AssertLogContains(const AFileName, AExpected: string);
     procedure CleanupLogFiles;
   protected
     procedure SetUp; override;
@@ -73,8 +74,8 @@ type
     { Format filtering tests }
     procedure Test26_FilteredFormatStringDoesNotFormat;
 
-    { v0.7.0 coverage gaps }
-    procedure Test27_DirectLogFmt;
+    { Additional behavior tests }
+    procedure Test27_FormattedOverloadWithLevelFiltering;
     procedure Test28_MinFileSizeClamp;
     procedure Test29_LogFormatShape;
     procedure Test30_InvalidPathDoesNotRaise;
@@ -160,6 +161,19 @@ begin
   end;
 end;
 
+function ReadTextFile(const AFileName: string): string;
+var
+  FileContent: TStringList;
+begin
+  FileContent := TStringList.Create;
+  try
+    FileContent.LoadFromFile(AFileName);
+    Result := FileContent.Text;
+  finally
+    FileContent.Free;
+  end;
+end;
+
 procedure TSimpleLogTest.SetUp;
 var
   TestBasePath: string;
@@ -196,6 +210,12 @@ end;
 procedure TSimpleLogTest.CleanupLogFiles;
 begin
   DeleteDirectoryTree(FTestDir);
+end;
+
+procedure TSimpleLogTest.AssertLogContains(const AFileName, AExpected: string);
+begin
+  AssertTrue(Format('Log file should contain "%s"', [AExpected]),
+    Pos(AExpected, ReadTextFile(AFileName)) > 0);
 end;
 
 // Factory method tests
@@ -791,24 +811,18 @@ begin
   AssertFalse('Silent formatted message should not create a log file', FileExists(FLogFile));
 end;
 
-procedure TSimpleLogTest.Test27_DirectLogFmt;
+procedure TSimpleLogTest.Test27_FormattedOverloadWithLevelFiltering;
 var
   Log: TSimpleLog;
-  FileContent: TStringList;
 begin
-  Log := TSimpleLog.FileLog(FLogFile);
-  Log.LogFmt(llWarning, 'Direct %s %d', ['format', 7]);
+  Log := TSimpleLog.FileLog(FLogFile).SetMinLevel(llWarning);
+  Log.Info('Filtered %s %d', ['format', 1]);
+  Log.Warning('Visible %s %d', ['format', 2]);
 
-  FileContent := TStringList.Create;
-  try
-    FileContent.LoadFromFile(FLogFile);
-    AssertTrue('Direct LogFmt should write the formatted message',
-      Pos('Direct format 7', FileContent.Text) > 0);
-    AssertTrue('Direct LogFmt should use the requested level',
-      Pos('[WARNING]', FileContent.Text) > 0);
-  finally
-    FileContent.Free;
-  end;
+  AssertLogContains(FLogFile, '[WARNING]');
+  AssertLogContains(FLogFile, 'Visible format 2');
+  AssertFalse('Filtered formatted overload should not be logged',
+    Pos('Filtered format 1', ReadTextFile(FLogFile)) > 0);
 end;
 
 procedure TSimpleLogTest.Test28_MinFileSizeClamp;

@@ -34,6 +34,7 @@ type
     procedure ResetConsoleColor;
     function GetLogLevelStr(ALevel: TLogLevel): string;
     function FormatMessage(ALevel: TLogLevel; const AMessage: string): string;
+    procedure LogFmt(ALevel: TLogLevel; const AFormat: string; const AArgs: array of const);
     procedure CheckFileRotation;
     function GetBackupFileName: string;
     function EnsureDirectoryExists(const ADir: string): Boolean;
@@ -53,7 +54,6 @@ type
 
     { Logging methods }
     procedure Log(ALevel: TLogLevel; const AMessage: string);
-    procedure LogFmt(ALevel: TLogLevel; const AFormat: string; const AArgs: array of const);
     procedure Debug(const AMessage: string);
     procedure Info(const AMessage: string);
     procedure Warning(const AMessage: string);

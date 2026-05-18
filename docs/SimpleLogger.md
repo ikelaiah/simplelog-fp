@@ -315,7 +315,6 @@ end;
 
 ```pascal
 procedure Log(ALevel: TLogLevel; const AMessage: string);
-procedure LogFmt(ALevel: TLogLevel; const AFormat: string; const AArgs: array of const);
 procedure Debug(const AMessage: string);
 procedure Info(const AMessage: string);
 procedure Warning(const AMessage: string);

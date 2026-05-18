@@ -9,11 +9,11 @@
 [![Lazarus](https://img.shields.io/badge/Lazarus-4.0+-60A5FA.svg)](https://www.lazarus-ide.org/)
 ![Supports Windows](https://img.shields.io/badge/support-Windows-F59E0B?logo=Windows)
 ![Supports Linux](https://img.shields.io/badge/support-Linux-F59E0B?logo=Linux)
-[![Version](https://img.shields.io/badge/version-0.7.0-8B5CF6.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.8.0-8B5CF6.svg)](CHANGELOG.md)
 ![No Dependencies](https://img.shields.io/badge/dependencies-none-10B981.svg)
 
 > [!Note]
-> SimpleLog-FP is currently in active development. This is a pre-1.0 release (v0.7.0). The API may change and feedback is welcome!
+> SimpleLog-FP is currently in active development. This is a pre-1.0 release (v0.8.0). The API may change and feedback is welcome!
 
 
 A **simple**, **lightweight**, and **easy-to-use** logging library for Free Pascal applications.
@@ -71,6 +71,8 @@ end;
 ```
 
 **That's it!** No complex setup, no memory management, no configuration files required.
+
+For a short walkthrough, see [Getting Started](docs/getting-started.md).
 
 ## ✨ Features
 
@@ -272,6 +274,7 @@ SimpleLog-FP/
 ├── tests/
 │   └── SimpleLog.Test.pas     # Comprehensive test suite
 ├── docs/
+│   ├── getting-started.md     # Short first-use guide
 │   ├── SimpleLogger.md        # User manual
 │   └── cheat-sheet.md         # Quick API reference
 └── README.md                  # This file

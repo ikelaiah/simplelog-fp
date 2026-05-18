@@ -260,10 +260,11 @@ procedure TSimpleLog.WriteToConsole(const AMessage: string; ALevel: TLogLevel);
 begin
   SetConsoleColor(ALevel);
   try
-    WriteLn(AMessage);
+    Write(AMessage);
   finally
     ResetConsoleColor;
   end;
+  WriteLn;
 end;
 
 function TSimpleLog.GetBackupFileName: string;

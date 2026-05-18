@@ -28,14 +28,14 @@ Please delete options that are not relevant.
 
 Please describe the tests that you ran to verify your changes.
 
-- [ ] Did you add / update existing test files? If so list addition / udpated files here:
+- [ ] Did you add / update existing test files? If so list added / updated files here:
   - ...
   - ...
 - [ ] Did it compile with the test runner?
 - [ ] Did you run the following command after compilation (in `tests/`)? If not, please modify.
 
-```pascal
-./TestRunner.exe -a --format=plain
+```powershell
+.\TestRunner.exe --all --format=plainnotiming
 ``` 
 
-- [ ] Did you pass all test?
+- [ ] Did all tests pass?

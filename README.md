@@ -9,11 +9,11 @@
 [![Lazarus](https://img.shields.io/badge/Lazarus-4.0+-60A5FA.svg)](https://www.lazarus-ide.org/)
 ![Supports Windows](https://img.shields.io/badge/support-Windows-F59E0B?logo=Windows)
 ![Supports Linux](https://img.shields.io/badge/support-Linux-F59E0B?logo=Linux)
-[![Version](https://img.shields.io/badge/version-0.8.0-8B5CF6.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.9.0-8B5CF6.svg)](CHANGELOG.md)
 ![No Dependencies](https://img.shields.io/badge/dependencies-none-10B981.svg)
 
 > [!Note]
-> SimpleLog-FP is currently in active development. This is a pre-1.0 release (v0.8.0). The API may change and feedback is welcome!
+> SimpleLog-FP is currently in active development. This is a pre-1.0 release (v0.9.0). The API may change and feedback is welcome!
 
 
 A **simple**, **lightweight**, and **easy-to-use** logging library for Free Pascal applications.
@@ -45,8 +45,8 @@ cd simplelog-fp
 
 1. Download `src/SimpleLog.pas` from this repository
 2. Copy it to your project directory
-2. Add `SimpleLog` to your uses clause
-3. Start logging!
+3. Add `SimpleLog` to your uses clause
+4. Start logging!
 
 ### Basic Usage
 
@@ -276,7 +276,8 @@ SimpleLog-FP/
 ├── docs/
 │   ├── getting-started.md     # Short first-use guide
 │   ├── SimpleLogger.md        # User manual
-│   └── cheat-sheet.md         # Quick API reference
+│   ├── cheat-sheet.md         # Quick API reference
+│   └── release-checklist.md   # Maintainer release checklist
 └── README.md                  # This file
 ```
 
@@ -284,9 +285,15 @@ SimpleLog-FP/
 
 A comprehensive test suite is provided in the `tests/` directory. To run the tests:
 
-- Open `TestRunner.lpi` in the Lazarus IDE or use `lazbuild` (required)
-- Build and run the project to execute all tests
-- Review the output in the IDE or generated log files
+- Build the Lazarus test runner:
+  ```bash
+  lazbuild tests/TestRunner.lpi
+  ```
+- Run the full suite:
+  ```bash
+  tests/TestRunner.exe --all --format=plainnotiming
+  ```
+- CI also builds and runs the test suite with plain FPC on Windows and Ubuntu.
 
 ## 📦 Lazarus Package
 

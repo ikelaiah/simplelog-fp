@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Release [0.9.0] - 2026-05-19
+
+### Added
+
+- Added GitHub Actions CI for Windows and Ubuntu FPC test builds.
+- Added a maintainer release checklist for version checks, local validation, CI, and tagging.
+
+### Changed
+
+- Updated README and Lazarus package metadata for the v0.9.0 stabilization release.
+- Refreshed contribution guidance and pull request test instructions to match the current test runner command.
+
+### Fixed
+
+- Fixed fatal console color bleed by resetting colors before writing the line ending.
+
 ## Release [0.8.0] - 2026-05-18
 
 ### Added

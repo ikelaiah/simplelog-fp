@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: FPC tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - windows-latest
+          - ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Free Pascal on Windows
+        if: runner.os == 'Windows'
+        run: |
+          choco install freepascal --version=3.2.2 -y --no-progress
+          "C:\tools\freepascal\bin\i386-win32" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Install Free Pascal on Ubuntu
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fpc
+
+      - name: Show compiler version
+        run: fpc -iV
+
+      - name: Build test runner on Windows
+        if: runner.os == 'Windows'
+        working-directory: tests
+        run: |
+          New-Item -ItemType Directory -Force lib\ci
+          fpc "-Fu..\src" "-FUlib\ci" TestRunner.lpr
+
+      - name: Build test runner on Ubuntu
+        if: runner.os == 'Linux'
+        working-directory: tests
+        run: |
+          mkdir -p lib/ci
+          fpc -Fu../src -FUlib/ci TestRunner.lpr
+
+      - name: Run tests on Windows
+        if: runner.os == 'Windows'
+        working-directory: tests
+        run: .\TestRunner.exe --all --format=plainnotiming
+
+      - name: Run tests on Ubuntu
+        if: runner.os == 'Linux'
+        working-directory: tests
+        run: ./TestRunner --all --format=plainnotiming

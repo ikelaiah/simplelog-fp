@@ -30,10 +30,10 @@ Thank you for your interest in contributing to SimpleLog-FP! We want to make con
 ### Code Style
 
 #### Naming Conventions
-- `T` prefix for types (e.g., `TStringKit`, `TDictionary<K,V>`)
-- `I` prefix for interfaces (e.g., `IDictionary<K,V>`)
-- `F` prefix for private fields (e.g., `FCount`, `FBuckets`)
-- `A` prefix for parameters in documentation (e.g., `APath`, `AText`)
+- `T` prefix for types (e.g., `TSimpleLog`, `TLogLevel`)
+- `I` prefix for interfaces if any are introduced
+- `F` prefix for private fields (e.g., `FOutputs`, `FLogFile`)
+- `A` prefix for parameters in documentation (e.g., `AFileName`, `ALevel`)
 - PascalCase for types, methods, and variables
 - UPPERCASE for constants
 
@@ -67,7 +67,7 @@ Thank you for your interest in contributing to SimpleLog-FP! We want to make con
 - Use exceptions for error conditions
 - Clean up resources in `finally` blocks
 - Provide meaningful error messages
-- Use custom exception types for specific error cases
+- Keep logging failures non-fatal to caller applications
 
 ### Commit Messages
 
@@ -77,20 +77,23 @@ Thank you for your interest in contributing to SimpleLog-FP! We want to make con
 
 Example:
 ```
-Add string reverse function to TStringKit
+Add bounded rotation regression coverage
 
-- Implement string reversal functionality
-- Add unit tests
-- Update documentation
+- Cover backup replacement behavior
+- Update the changelog
 Fixes #123
 ```
 
 ### Testing
 
 - Add unit tests for new functionality
-- Ensure all tests pass before submitting PR
-- Test on Windows (minimum requirement)
-- If possible, test on Linux/macOS
+- Ensure all tests pass before submitting PR:
+  ```bash
+  lazbuild tests/TestRunner.lpi
+  tests/TestRunner.exe --all --format=plainnotiming
+  ```
+- Test on Windows and rely on CI for the Ubuntu FPC check
+- If possible, also smoke test on macOS
 
 ### Documentation
 
@@ -106,7 +109,8 @@ Fixes #123
 3. Add tests for new functionality
 4. Ensure the test suite passes
 5. Update the CHANGELOG.md
-6. Submit a pull request
+6. For release changes, follow `docs/release-checklist.md`
+7. Submit a pull request
 
 ### Pull Request Title Format
 
@@ -147,4 +151,4 @@ Contributors will be recognized in:
 
 ## 📄 License
 
-By contributing, you agree that your contributions will be licensed under the MIT License. 
+By contributing, you agree that your contributions will be licensed under the MIT License.

@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Release [1.0.0] - 2026-07-30
+
+### Added
+
+- Added `TConsoleColorMode` with automatic terminal detection and explicit
+  always/never modes.
+- Added `TLogErrorMode`, `SetErrorMode`, and `ESimpleLogError` so applications
+  can opt into observable file and rotation failures.
+- Added package-consumer, failed-rotation, redirected-color, Unicode, and
+  stronger threaded logging regression coverage.
+
+### Changed
+
+- Renamed the Lazarus package and generated package unit to `simplelog_fp` to
+  avoid shadowing the public `SimpleLog` unit.
+- Made automatic console color detection the default and restored the previous
+  Windows console attributes after each colored message.
+- Synchronized logging filter decisions, formatted logging, configuration
+  methods, and read-only property access under the unit-level lock.
+- Corrected the timestamp, threading, error-policy, rotation, and `Fatal`
+  documentation to match the implementation.
+- Updated release metadata, CI, examples, and validation instructions for
+  version 1.0.0.
+
+### Fixed
+
+- Made failed rotation non-destructive: the active log is never deleted or
+  truncated merely because a rename or backup operation failed.
+- Prevented automatic ANSI color sequences from being written to redirected
+  Unix output.
+
 ## Release [0.9.0] - 2026-05-19
 
 ### Added

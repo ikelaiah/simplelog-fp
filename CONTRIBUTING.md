@@ -67,7 +67,9 @@ Thank you for your interest in contributing to SimpleLog-FP! We want to make con
 - Use exceptions for error conditions
 - Clean up resources in `finally` blocks
 - Provide meaningful error messages
-- Keep logging failures non-fatal to caller applications
+- Preserve the default non-fatal logging policy
+- Ensure `lemRaise` reports file and rotation failures as `ESimpleLogError`
+- Never delete or truncate an active log as a fallback for failed rotation
 
 ### Commit Messages
 
@@ -89,10 +91,12 @@ Fixes #123
 - Add unit tests for new functionality
 - Ensure all tests pass before submitting PR:
   ```bash
-  lazbuild tests/TestRunner.lpi
+  lazbuild --build-mode=Debug tests/TestRunner.lpi
   tests/TestRunner.exe --all --format=plainnotiming
   ```
 - Test on Windows and rely on CI for the Ubuntu FPC check
+- Build `packages/lazarus/simplelog_fp.lpk` and compile
+  `tests/PackageConsumer.pas` against the resulting package output
 - If possible, also smoke test on macOS
 
 ### Documentation

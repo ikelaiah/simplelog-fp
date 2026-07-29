@@ -39,14 +39,39 @@ jobs:
 
       - name: Build test runner on Windows
         if: runner.os == 'Windows'
-        run: lazbuild tests\TestRunner.lpi
+        run: lazbuild --build-mode=Debug tests\TestRunner.lpi
+
+      - name: Build Lazarus package on Windows
+        if: runner.os == 'Windows'
+        run: lazbuild --build-all packages\lazarus\simplelog_fp.lpk
+
+      - name: Compile package consumer on Windows
+        if: runner.os == 'Windows'
+        run: |
+          New-Item -ItemType Directory -Force build\package-consumer | Out-Null
+          fpc "-Fupackages\lazarus\lib\x86_64-win64" "-FUbuild\package-consumer" "-FEbuild\package-consumer" tests\PackageConsumer.pas
+          .\build\package-consumer\PackageConsumer.exe
 
       - name: Build test runner on Ubuntu
         if: runner.os == 'Linux'
         working-directory: tests
         run: |
           mkdir -p lib/ci
-          fpc -Fu../src -FUlib/ci TestRunner.lpr
+          fpc -Ci -Cr -Co -Fu../src -FUlib/ci TestRunner.lpr
+
+      - name: Build examples on Windows
+        if: runner.os == 'Windows'
+        run: |
+          lazbuild --build-mode=Release examples\SimpleLogExample\SimpleLogExample.lpi
+          lazbuild --build-mode=Release examples\ThreadSafeExample\ThreadSafeExample.lpi
+
+      - name: Build examples on Ubuntu
+        if: runner.os == 'Linux'
+        run: |
+          mkdir -p examples/SimpleLogExample/lib/ci
+          fpc -Fu./src -FUexamples/SimpleLogExample/lib/ci examples/SimpleLogExample/SimpleLogExample.pas
+          mkdir -p examples/ThreadSafeExample/lib/ci
+          fpc -Fu./src -FUexamples/ThreadSafeExample/lib/ci examples/ThreadSafeExample/ThreadSafeExample.pas
 
       - name: Run tests on Windows
         if: runner.os == 'Windows'

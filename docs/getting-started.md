@@ -55,16 +55,43 @@ Log := TSimpleLog.FileLog('app.log')
 
 When `app.log` reaches the limit, it is moved to `app.log.1`. SimpleLog keeps only that one backup.
 
-## 7. Disable Colors When Needed
+## 7. Control Console Colors
 
 ```pascal
-Log := TSimpleLog.Console.SetUseColors(False);
+Log := TSimpleLog.Console.SetColorMode(ccmNever);
 ```
 
-This is useful for CI logs, redirected output, and terminals that do not handle color control codes well.
+The default `ccmAuto` mode uses colors only when `Output` is an interactive
+terminal. Use `ccmAlways` or `ccmNever` to override automatic detection.
+
+## 8. Choose a File Error Policy
+
+File and rotation failures are non-fatal by default:
+
+```pascal
+Log := TSimpleLog.FileLog('app.log').SetErrorMode(lemSilent);
+```
+
+Applications that must observe logging failures can opt into exceptions:
+
+```pascal
+Log := TSimpleLog.FileLog('app.log').SetErrorMode(lemRaise);
+
+try
+  Log.Info('Application started');
+except
+  on E: ESimpleLogError do
+    WriteLn(StdErr, E.Message);
+end;
+```
 
 ## Notes
 
-- Configure the logger before sharing it between threads.
+- Logging calls, individual configuration calls, and property reads are
+  serialized within the process.
+- Configure before sharing when a multi-step configuration chain must be
+  observed as one logical change.
 - Use the `Set...` methods for configuration.
-- Properties such as `LogFile`, `MinLevel`, and `UseColors` are read-only status values.
+- Properties such as `LogFile`, `MinLevel`, `ColorMode`, and `ErrorMode` are
+  read-only status values.
+- Timestamps use local wall-clock time and do not include a timezone offset.

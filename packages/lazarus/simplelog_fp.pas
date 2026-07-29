@@ -2,10 +2,13 @@
   This source is only used to compile and install the package.
  }
 
-unit simplelog;
+unit simplelog_fp;
 
 {$warn 5023 off : no warning about unused units}
 interface
+
+uses
+  SimpleLog;
 
 implementation
 

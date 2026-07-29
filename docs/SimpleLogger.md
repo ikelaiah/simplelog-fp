@@ -1,267 +1,36 @@
-# SimpleLog Documentation
+# SimpleLog-FP Manual
 
 ## Overview
 
-`SimpleLog` is a minimal, modern logging component for Free Pascal applications. It provides formatted log messages with timestamps, log levels, bounded file rotation, optional cross-platform colored console output, and multiple output destinations.
+SimpleLog-FP is a focused logging unit for Free Pascal applications. It writes
+timestamped messages to the console, a file, or both without requiring object
+lifetime management or third-party dependencies.
 
-## Philosophy
+The library is intended for single-process applications that need straightforward
+text logs. It does not provide structured events, category hierarchies, network
+sinks, or cross-process file coordination.
 
-SimpleLog follows a "minimal but complete" philosophy:
-
-- **Zero dependencies** - Uses only standard Free Pascal units
-- **Cross-platform** - Works on Windows, Linux, macOS without changes
-- **Developer-friendly** - Method chaining, fluent API, sensible defaults
-- **Production-ready** - File rotation, thread safety, error handling
-
-## Target Audience
-
-SimpleLog is designed for:
-
-- **Free Pascal developers** seeking a modern, dependency-free logging solution
-- **Developers who value simplicity** but need reliable logging capabilities
-- **Applications ranging from small utilities to complex systems**
-
-You can expect:
-
-- One-line setup for common scenarios
-- Method chaining for fluent configuration
-- Automatic file rotation and directory creation
-- Optional cross-platform colored console output
-
-You won't find:
-
-- Complex hierarchical logger trees
-- Heavy dependencies or framework requirements
-- Performance overhead from unused features
-
-## Quick Start Guide
-
-This step-by-step guide will help you get started with SimpleLog:
-
-### Step 1: Include the SimpleLog Unit
+## Quick Start
 
 ```pascal
 uses
   SimpleLog;
-```
 
-### Step 2: Create a Logger
-
-SimpleLog uses factory methods to create logger instances:
-
-```pascal
 var
-  Logger: TSimpleLog;
+  Log: TSimpleLog;
 begin
-  // Console only
-  Logger := TSimpleLog.Console;
-  
-  // File only
-  Logger := TSimpleLog.FileLog('application.log');
-  
-  // Both console and file
-  Logger := TSimpleLog.Both('application.log');
+  Log := TSimpleLog.Both('application.log')
+    .SetMinLevel(llInfo);
+
+  Log.Info('Application started');
+  Log.Warning('Low disk space: %d%% remaining', [8]);
 end;
 ```
 
-### Step 3: Configure with Method Chaining (Optional)
+Always initialize a logger with `Console`, `FileLog`, or `Both`. A default,
+zero-initialized `TSimpleLog` has no output destinations.
 
-```pascal
-var
-  Logger: TSimpleLog;
-begin
-  Logger := TSimpleLog.Both('application.log')
-    .SetMinLevel(llInfo)
-    .SetMaxFileSize(5 * 1024 * 1024);  // 5MB
-end;
-```
-
-### Step 4: Log Messages
-
-Choose the appropriate log level based on the message importance:
-
-```pascal
-// Development-time detailed information
-Logger.Debug('Database connection string: %s', [connectionString]);
-
-// General operational information
-Logger.Info('User %s logged in successfully', [username]);
-
-// Potential issue that might need attention
-Logger.Warning('Disk space below 10%% on drive %s', [driveLetter]);
-
-// Error that allows operation to continue
-Logger.Error('Could not save preferences: %s', [errorMessage]);
-
-// Critical error that requires application termination
-Logger.Fatal('Database connection lost, cannot continue');
-```
-
-## Common Scenarios
-
-Here are some common logging scenarios and how to handle them:
-
-### Development and Debugging
-
-```pascal
-var
-  Logger: TSimpleLog;
-begin
-  // Show all details including debug messages
-  Logger := TSimpleLog.Console.SetMinLevel(llDebug);
-
-  // Include technical details useful for debugging
-  Logger.Debug('Connection status: %d, buffer size: %d', [connStatus, bufferSize]);
-end;
-```
-
-### Production Environment
-
-```pascal
-var
-  Logger: TSimpleLog;
-begin
-  // Log to file with reduced noise
-  Logger := TSimpleLog.FileLog('application.log').SetMinLevel(llInfo);
-
-  // Or even more restrictive
-  Logger := TSimpleLog.FileLog('application.log').SetMinLevel(llWarning);
-end;
-```
-
-### Both Console and File Logging
-
-```pascal
-var
-  Logger: TSimpleLog;
-begin
-  // Log to both console and file
-  Logger := TSimpleLog.Both('application.log').SetMinLevel(llInfo);
-  
-  Logger.Info('Application started');
-  Logger.Warning('Low memory detected');
-end;
-```
-
-### File Rotation
-
-```pascal
-var
-  Logger: TSimpleLog;
-begin
-  // Automatically rotate files when they reach 5MB
-  Logger := TSimpleLog.FileLog('application.log')
-    .SetMaxFileSize(5 * 1024 * 1024);  // 5MB
-    
-  // Files are rotated to one bounded backup: application.log.1
-  Logger.Info('This will be logged with automatic rotation');
-end;
-```
-
-### Silent Logging
-
-```pascal
-var
-  Logger: TSimpleLog;
-begin
-  // Suppress all output (useful for testing or quiet modes)
-  Logger := TSimpleLog.Console.SetSilent(True);
-  
-  Logger.Info('This message will not be displayed');
-end;
-```
-
-## Features
-
-- **Log Levels**: Debug, Info, Warning, Error, and Fatal levels with optional cross-platform console colors
-- **Multiple Destinations**: Log to console, files, or both simultaneously  
-- **File Rotation**: Automatic log file rotation when size limits are reached
-- **Method Chaining**: Fluent API for configuration (SetMinLevel, SetMaxFileSize, etc.)
-- **Zero Dependencies**: Uses only standard Free Pascal units (Classes, SysUtils)
-- **Cross-Platform**: Works on Windows, Linux, macOS without changes
-- **Thread-Safe**: Logging operations are serialized internally
-- **Error Handling**: Robust error recovery to prevent logging failures from crashing applications
-- **Format String Support**: Convenient format string overloads for all log methods
-- **Automatic Directory Creation**: Creates log directories automatically
-- **Timestamped Output**: All log messages include precise timestamps
-- **Silent Mode**: Ability to suppress all output for testing or quiet operations
-- **Color Control**: Ability to disable console colors for plain output
-- **Advanced Record**: TSimpleLog is an advanced record with value semantics
-
-## Advanced Usage
-
-### Complete Configuration Example
-
-```pascal
-var
-  Logger: TSimpleLog;
-begin
-  Logger := TSimpleLog.Both('application.log')
-    .SetMinLevel(llInfo)
-    .SetMaxFileSize(10 * 1024 * 1024)  // 10MB
-    .SetSilent(False)
-    .SetUseColors(True);
-    
-  Logger.Info('Logger configured with method chaining');
-end;
-```
-
-### Dynamic Output Configuration
-
-```pascal
-var
-  Logger: TSimpleLog;
-begin
-  Logger := TSimpleLog.Console;
-  
-  // Change to file logging at runtime
-  Logger := Logger
-    .SetOutputs([odFile])
-    .SetFile('new-logfile.log');
-    
-  // Change to both outputs
-  Logger := Logger.SetOutputs([odConsole, odFile]);
-end;
-```
-
-### Error Handling
-
-```pascal
-var
-  Logger: TSimpleLog;
-begin
-  // SimpleLog handles errors gracefully - failed writes won't crash your app
-  Logger := TSimpleLog.FileLog('/invalid/path/app.log');
-  Logger.Info('This will fail silently if path is invalid');
-  
-  // Always check if logging is working in critical scenarios
-  if FileExists(Logger.LogFile) then
-    Logger.Info('Logging is working correctly');
-end;
-```
-
-### Working with Multiple Loggers
-
-```pascal
-var
-  AppLogger, DebugLogger: TSimpleLog;
-begin
-  // Different loggers for different purposes
-  AppLogger := TSimpleLog.FileLog('application.log').SetMinLevel(llInfo);
-  DebugLogger := TSimpleLog.Console.SetMinLevel(llDebug);
-  
-  AppLogger.Info('Application event');
-  DebugLogger.Debug('Debug information');
-end;
-```
-
-## API Reference
-
-### TSimpleLog Record
-
-TSimpleLog is an advanced record (value type) that provides logging functionality with method chaining.
-
-#### Factory Methods
+## Factories
 
 ```pascal
 class function Console: TSimpleLog; static;
@@ -269,24 +38,49 @@ class function FileLog(const AFileName: string): TSimpleLog; static;
 class function Both(const AFileName: string): TSimpleLog; static;
 ```
 
-**Examples:**
+Factory defaults are:
+
+- Minimum level: `llDebug`
+- Maximum file size: 10 MiB
+- Silent mode: disabled
+- Console color mode: `ccmAuto`
+- File error mode: `lemSilent`
+
+## Logging
 
 ```pascal
-var
-  Logger: TSimpleLog;
-begin
-  // Console only
-  Logger := TSimpleLog.Console;
-  
-  // File only
-  Logger := TSimpleLog.FileLog('application.log');
-  
-  // Both console and file
-  Logger := TSimpleLog.Both('application.log');
-end;
+Log.Debug('Diagnostic detail');
+Log.Info('Normal operation');
+Log.Warning('Potential problem');
+Log.Error('Recoverable failure');
+Log.Fatal('Critical failure');
+
+Log.Info('Processed %d records', [RecordCount]);
+Log.Log(llInfo, 'A message with an explicit level');
 ```
 
-#### Configuration Methods (Method Chaining)
+`Fatal` records the `llFatal` severity; it does not terminate the application.
+The caller remains responsible for shutdown or recovery.
+
+Formatted overloads do not call `Format` when their level is filtered or silent
+mode is active.
+
+## Configuration
+
+Configuration methods update the record and return it for chaining:
+
+```pascal
+Log := TSimpleLog.Both('application.log')
+  .SetOutputs([odConsole, odFile])
+  .SetFile('application.log')
+  .SetMinLevel(llInfo)
+  .SetMaxFileSize(5 * 1024 * 1024)
+  .SetSilent(False)
+  .SetColorMode(ccmAuto)
+  .SetErrorMode(lemSilent);
+```
+
+Available methods:
 
 ```pascal
 function SetOutputs(AOutputs: TOutputDestinations): TSimpleLog;
@@ -294,232 +88,156 @@ function SetFile(const AFileName: string): TSimpleLog;
 function SetMinLevel(ALevel: TLogLevel): TSimpleLog;
 function SetMaxFileSize(ASize: Int64): TSimpleLog;
 function SetSilent(ASilent: Boolean): TSimpleLog;
+function SetColorMode(AMode: TConsoleColorMode): TSimpleLog;
 function SetUseColors(AUseColors: Boolean): TSimpleLog;
+function SetErrorMode(AMode: TLogErrorMode): TSimpleLog;
 ```
 
-**Examples:**
+`SetMaxFileSize` clamps values below 1 KiB to 1 KiB.
+
+`SetUseColors` is a convenience API retained for compatibility:
+
+- `SetUseColors(True)` selects `ccmAlways`
+- `SetUseColors(False)` selects `ccmNever`
+
+## Console Colors
 
 ```pascal
-var
-  Logger: TSimpleLog;
-begin
-  Logger := TSimpleLog.Both('application.log')
-    .SetMinLevel(llInfo)
-    .SetMaxFileSize(5 * 1024 * 1024)  // 5MB
-    .SetSilent(False)
-    .SetUseColors(True);
+TConsoleColorMode = (ccmAuto, ccmAlways, ccmNever);
+```
+
+- `ccmAuto` is the default. Colors are used only when the current `Output` text
+  handle is an interactive terminal.
+- `ccmAlways` requests colors even when output is redirected. On Unix this
+  writes ANSI escape sequences.
+- `ccmNever` writes plain console text.
+
+On Windows, SimpleLog restores the console attributes that were active before
+each message rather than imposing a hardcoded default.
+
+All console levels currently write to standard `Output`. SimpleLog does not
+route warnings or errors to `StdErr` automatically.
+
+## File Error Policy
+
+```pascal
+TLogErrorMode = (lemSilent, lemRaise);
+```
+
+`lemSilent` is the default and preserves the traditional best-effort behavior:
+directory, file, and rotation failures do not escape the logging call.
+
+Use `lemRaise` when the application must observe failures:
+
+```pascal
+Log := TSimpleLog.FileLog('required/application.log')
+  .SetErrorMode(lemRaise);
+
+try
+  Log.Info('Required audit event');
+except
+  on E: ESimpleLogError do
+    WriteLn(StdErr, E.Message);
 end;
 ```
 
-#### Logging Methods
-
-```pascal
-procedure Log(ALevel: TLogLevel; const AMessage: string);
-procedure Debug(const AMessage: string);
-procedure Info(const AMessage: string);
-procedure Warning(const AMessage: string);
-procedure Error(const AMessage: string);
-procedure Fatal(const AMessage: string);
-```
-
-**Format String Overloads:**
-
-```pascal
-procedure Debug(const AFormat: string; const AArgs: array of const); overload;
-procedure Info(const AFormat: string; const AArgs: array of const); overload;
-procedure Warning(const AFormat: string; const AArgs: array of const); overload;
-procedure Error(const AFormat: string; const AArgs: array of const); overload;
-procedure Fatal(const AFormat: string; const AArgs: array of const); overload;
-```
-
-Formatted overloads are skipped without calling `Format` when the message is below `MinLevel` or `Silent` is enabled.
-
-**Examples:**
-
-```pascal
-var
-  Logger: TSimpleLog;
-begin
-  Logger := TSimpleLog.Console;
-  
-  // Simple messages
-  Logger.Info('Application started');
-  Logger.Warning('Low memory detected');
-  
-  // Format strings
-  Logger.Info('User %s logged in at %s', [username, TimeToStr(Now)]);
-  Logger.Error('Failed to save file: %s', [errorMessage]);
-end;
-```
-
-#### Properties
-
-Properties are read-only. Use configuration methods to change logger behavior.
-
-```pascal
-property Outputs: TOutputDestinations read FOutputs;
-property LogFile: string read FLogFile;
-property MinLevel: TLogLevel read FMinLevel;
-property MaxFileSize: Int64 read FMaxFileSize;
-property Silent: Boolean read FSilent;
-property UseColors: Boolean read FUseColors;
-```
-
-### Enumerations
-
-#### TLogLevel
-
-```pascal
-TLogLevel = (llDebug, llInfo, llWarning, llError, llFatal);
-```
-
-- **llDebug**: Detailed information for debugging
-- **llInfo**: General informational messages
-- **llWarning**: Warning messages for potential issues
-- **llError**: Error messages for failures that allow continued operation
-- **llFatal**: Critical errors requiring application termination
-
-#### TOutputDestination
-
-```pascal
-TOutputDestination = (odConsole, odFile);
-TOutputDestinations = set of TOutputDestination;
-```
-
-- **odConsole**: Output to console/terminal
-- **odFile**: Output to log file
-
-### Constants
-
-```pascal
-DEFAULT_MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-MIN_MAX_FILE_SIZE = 1024; // 1KB minimum
-```
+With `Both`, console output is written before file output. A file exception can
+therefore occur after the message has already appeared on the console.
 
 ## File Rotation
 
-SimpleLog automatically rotates log files when they reach the maximum size:
+When the active file is already at or above `MaxFileSize` before a write:
 
-1. When a file reaches `MaxFileSize`, it is renamed to `filename.1`
-2. A new file is created with the original name
-3. Any previous `.1` backup is replaced
+1. The previous `.1` backup is staged temporarily when necessary.
+2. The active file is renamed to `.1`.
+3. A new active file is created by the pending write.
+4. The previous staged backup is removed.
 
-**Example:**
+If rotation cannot safely rename the active file, SimpleLog leaves the active
+file intact. In `lemSilent` mode it continues appending to that file; in
+`lemRaise` mode it raises `ESimpleLogError`.
 
-- `application.log` reaches 10MB
-- Renamed to `application.log.1`
-- New `application.log` is created
+The size check occurs before writing. A single entry can therefore make the
+active file larger than `MaxFileSize`, and an individual oversized entry can
+produce an oversized backup on the next write.
 
+Rotation is designed for one process. Multiple processes must not write or
+rotate the same file concurrently.
 
-## Thread Safety
+## Timestamps
 
-SimpleLog serializes logging operations internally:
+The fixed text format is:
 
-- Logging operations use an internal unit-level lock
-- Individual configuration methods also use the same lock
-- Configure a logger before sharing it between threads for the most predictable behavior
-- No log message interleaving or corruption during logging calls
-- Record value semantics and method chaining remain lightweight
-
-**Resource Management:**
-
-- You do not need to call any cleanup methods
-- `Finalize` is no longer part of the public API
-
-**Example:**
-
-```pascal
-var
-  Logger: TSimpleLog;
-begin
-  Logger := TSimpleLog.Both('threaded.log');
-  Logger.Info('Thread-safe logging!');
-end;
+```text
+[yyyy-mm-dd hh:nn:ss.zzz] [LEVEL] message
 ```
 
-## Error Handling
+The timestamp comes from `Now` and represents local wall-clock time. It displays
+milliseconds but does not include a UTC offset or timezone. Wall-clock time can
+jump when the system clock changes and should not be used as a monotonic
+performance timer.
 
-SimpleLog handles errors gracefully:
+Messages containing line endings produce multi-line log entries; SimpleLog does
+not escape message content.
 
-- Failed file operations don't crash the application
-- Invalid paths are handled silently
-- Console output continues even if file logging fails
+## Thread-Safety Contract
 
-## Best Practices
+SimpleLog uses one unit-level critical section:
 
-### 1. Use Method Chaining for Configuration
+- Logging calls are serialized within the process.
+- Each configuration method is serialized.
+- Read-only property access is serialized.
+- Formatted logging makes the filter decision and formats the message under the
+  same lock.
+- Independent logger values are also serialized because the lock is global.
 
-```pascal
-var
-  Logger: TSimpleLog;
-begin
-  Logger := TSimpleLog.Both('application.log')
-    .SetMinLevel(llInfo)
-    .SetMaxFileSize(5 * 1024 * 1024);
-end;
-```
+A multi-method configuration chain is not one atomic operation. Configure a
+logger before sharing it when other threads must not observe intermediate
+settings.
 
-### 2. Choose Appropriate Log Levels
+`TSimpleLog` has value semantics. Passing or assigning it by value copies the
+configuration; later changes to one copy do not update another copy.
 
-```pascal
-Logger.Debug('Detailed debug info');      // Development only
-Logger.Info('Normal operations');         // General information
-Logger.Warning('Potential issues');       // Things to watch
-Logger.Error('Recoverable errors');       // Failures that allow continuation
-Logger.Fatal('Critical failures');        // Application cannot continue
-```
+On Unix, the host program must initialize thread support in the normal Free
+Pascal way by placing `cthreads` first in its program `uses` list before using
+threads.
 
-### 3. Use Format Strings for Performance
+## Read-Only Properties
 
 ```pascal
-// Good - format string
-Logger.Info('Processing %d items', [count]);
-
-// Avoid - string concatenation in performance-critical code
-Logger.Info('Processing ' + IntToStr(count) + ' items');
+property Outputs: TOutputDestinations;
+property LogFile: string;
+property MinLevel: TLogLevel;
+property MaxFileSize: Int64;
+property Silent: Boolean;
+property ColorMode: TConsoleColorMode;
+property UseColors: Boolean;
+property ErrorMode: TLogErrorMode;
 ```
 
-### 4. Configure Once, Use Everywhere
+`UseColors` is `False` only for `ccmNever`; inspect `ColorMode` when the
+distinction between automatic and always-on behavior matters.
+
+## Enumerations
 
 ```pascal
-// Configure at application startup
-var
-  Logger: TSimpleLog;
-begin
-  Logger := TSimpleLog.Both('application.log').SetMinLevel(llInfo);
-  
-  // Pass logger to components or use as global variable
-  ProcessData(Logger);
-end;
+TLogLevel = (llDebug, llInfo, llWarning, llError, llFatal);
+
+TOutputDestination = (odConsole, odFile);
+TOutputDestinations = set of TOutputDestination;
+
+TConsoleColorMode = (ccmAuto, ccmAlways, ccmNever);
+TLogErrorMode = (lemSilent, lemRaise);
 ```
 
-## Limitations
+## Lazarus Package
 
-1. SimpleLog is designed for single-process applications
-2. File rotation keeps one bounded `.1` backup
-3. Multi-step reconfiguration chains are not atomic across threads
-4. Cross-platform support requires Free Pascal compilation
+Open `packages/lazarus/simplelog_fp.lpk` and add the `simplelog_fp` package to
+the project. The package name intentionally differs from the public `SimpleLog`
+unit name so the generated package unit cannot shadow the library.
 
-## Migration from Logger-FP
+## Resource Management
 
-If migrating from the old Logger-FP implementation:
-
-1. Change `uses Logger` to `uses SimpleLog`
-2. Replace singleton calls like `Logger.Info()` with instance calls
-3. Use factory methods instead of initialization procedures
-4. Update method chaining syntax for configuration
-
-**Old Style:**
-```pascal
-uses Logger;
-TLogger.CreateConsoleAndFileLogger('app.log', llInfo);
-Logger.Info('Message');
-```
-
-**New Style:**
-```pascal
-uses SimpleLog;
-var Logger: TSimpleLog;
-Logger := TSimpleLog.Both('app.log').SetMinLevel(llInfo);
-Logger.Info('Message');
-```
+`TSimpleLog` is an advanced record. It does not require `Create`, `Free`,
+`Finalize`, or `Flush`; each file write is completed before the logging call
+returns.

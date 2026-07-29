@@ -1,4 +1,6 @@
-# SimpleLog-FP v1.0.0
+# 🚀 SimpleLog-FP v1.0.0
+
+> **The first stable release is here!**
 
 SimpleLog-FP v1.0.0 is the first stable release of the focused logging library
 for Free Pascal.
@@ -6,9 +8,9 @@ for Free Pascal.
 It keeps the API small—console logging, file logging, or both—while strengthening
 the behavior expected from a dependable application logger.
 
-## Highlights
+## ✨ Highlights
 
-### Safer file rotation
+### 🛡️ Safer file rotation
 
 Failed rotation no longer deletes or truncates the active log as a fallback.
 SimpleLog-FP stages the previous backup and preserves log data when filesystem
@@ -21,7 +23,7 @@ application.log
 application.log.1
 ```
 
-### Observable file errors
+### 🚨 Observable file errors
 
 Logging remains best-effort by default:
 
@@ -44,7 +46,7 @@ except
 end;
 ```
 
-### Smarter console colors
+### 🎨 Smarter console colors
 
 Console colors now default to automatic terminal detection:
 
@@ -62,7 +64,7 @@ On Windows, the console attributes active before a message are restored
 afterward. Redirected Unix output no longer receives ANSI sequences in automatic
 mode.
 
-### Clearer thread-safety guarantees
+### 🧵 Clearer thread-safety guarantees
 
 Logging calls, individual configuration methods, formatted filtering, and
 read-only property access are serialized within the process.
@@ -70,7 +72,7 @@ read-only property access are serialized within the process.
 `TSimpleLog` retains value semantics: copying a logger copies its configuration,
 and later changes to one copy do not update another.
 
-### Tested Lazarus package
+### 📦 Tested Lazarus package
 
 The Lazarus package is now named `simplelog_fp`. This avoids a unit-name
 collision that previously allowed the generated package unit to shadow the
@@ -79,9 +81,9 @@ public `SimpleLog` unit.
 The release includes a package-only consumer test to verify that applications
 can compile against the package output.
 
-## Upgrade Guide
+## ⬆️ Upgrade Guide
 
-### Lazarus package users
+### 🧰 Lazarus package users
 
 Remove the old `simplelog` package reference and add:
 
@@ -96,7 +98,7 @@ uses
   SimpleLog;
 ```
 
-### Console color behavior
+### 🌈 Console color behavior
 
 Colors now use `ccmAuto` by default. To retain unconditional color behavior:
 
@@ -113,7 +115,7 @@ Log := Log.SetColorMode(ccmNever);
 `SetUseColors(True)` and `SetUseColors(False)` remain available as convenience
 aliases.
 
-## Example
+## 🚀 Quick Example
 
 ```pascal
 program MyApplication;
@@ -137,7 +139,7 @@ begin
 end.
 ```
 
-## Log Format
+## 📝 Log Format
 
 ```text
 [yyyy-mm-dd hh:nn:ss.zzz] [LEVEL] message
@@ -149,7 +151,7 @@ monotonic performance measurement.
 
 `Fatal` records the `llFatal` severity but does not terminate the application.
 
-## Quality and Compatibility
+## ✅ Quality and Compatibility
 
 - Free Pascal 3.2.2 or later
 - Lazarus 4.0 or later
@@ -159,7 +161,7 @@ monotonic performance measurement.
 - Windows Lazarus and Ubuntu FPC CI coverage
 - No third-party runtime dependencies
 
-## Known Scope
+## 🎯 Known Scope
 
 SimpleLog-FP is designed for single-process text logging. It intentionally does
 not provide:
@@ -170,7 +172,7 @@ not provide:
 - Logger category hierarchies
 - Automatic application termination for fatal messages
 
-## Installation
+## 📥 Installation
 
 Copy the public unit into a project:
 
@@ -191,6 +193,7 @@ uses
   SimpleLog;
 ```
 
-Thank you to everyone who tested, reviewed, suggested improvements, and helped
-SimpleLog-FP reach its first stable release.
+## 🙏 Thank You
 
+Thank you to everyone who tested, reviewed, suggested improvements, and helped
+SimpleLog-FP reach its first stable release. 💙

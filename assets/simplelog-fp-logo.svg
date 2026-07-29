@@ -1,49 +1,112 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="820" height="240" viewBox="0 0 820 240" role="img" aria-labelledby="title desc">
-  <title id="title">SimpleLog-FP logo</title>
-  <desc id="desc">A compact Free Pascal logging logo with file and console symbols.</desc>
+  <title id="title">SimpleLog-FP</title>
+  <desc id="desc">SimpleLog-FP banner with a document, terminal prompt, log levels, and a sample log entry.</desc>
+
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#0f172a"/>
-      <stop offset="0.55" stop-color="#1e3a8a"/>
-      <stop offset="1" stop-color="#312e81"/>
+    <linearGradient id="background" x1="34" y1="16" x2="790" y2="228" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#081226"/>
+      <stop offset=".52" stop-color="#172554"/>
+      <stop offset="1" stop-color="#1E3A8A"/>
     </linearGradient>
-    <linearGradient id="page" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#ffffff"/>
-      <stop offset="1" stop-color="#dbeafe"/>
+    <linearGradient id="page" x1="96" y1="32" x2="218" y2="184" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#DBEAFE"/>
     </linearGradient>
-    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
-      <feDropShadow dx="0" dy="12" stdDeviation="10" flood-color="#020617" flood-opacity="0.28"/>
+    <linearGradient id="fold" x1="176" y1="32" x2="218" y2="76" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#BFDBFE"/>
+      <stop offset="1" stop-color="#60A5FA"/>
+    </linearGradient>
+    <linearGradient id="terminalStroke" x1="52" y1="124" x2="218" y2="199" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#38BDF8"/>
+      <stop offset="1" stop-color="#2563EB"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0" cy="0" r="1" gradientTransform="translate(706 32) rotate(135) scale(268 216)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#38BDF8" stop-opacity=".28"/>
+      <stop offset="1" stop-color="#38BDF8" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="dotGrid" width="20" height="20" patternUnits="userSpaceOnUse">
+      <circle cx="1" cy="1" r="1" fill="#BFDBFE" fill-opacity=".12"/>
+    </pattern>
+    <clipPath id="bannerClip">
+      <rect width="820" height="240" rx="26"/>
+    </clipPath>
+    <filter id="panelShadow" x="-20%" y="-20%" width="150%" height="160%">
+      <feDropShadow dx="0" dy="12" stdDeviation="13" flood-color="#020617" flood-opacity=".4"/>
+    </filter>
+    <filter id="softShadow" x="-25%" y="-25%" width="160%" height="170%">
+      <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#020617" flood-opacity=".34"/>
     </filter>
   </defs>
 
-  <rect width="820" height="240" rx="26" fill="url(#bg)"/>
-  <path d="M0 182 C120 138 202 236 342 184 C492 128 610 174 820 94 L820 240 L0 240 Z" fill="#0ea5e9" opacity="0.12"/>
-  <path d="M72 44 h216 a22 22 0 0 1 22 22 v108 a22 22 0 0 1 -22 22 H72 a22 22 0 0 1 -22 -22 V66 a22 22 0 0 1 22 -22 Z" fill="#020617" opacity="0.28"/>
+  <rect width="820" height="240" rx="26" fill="url(#background)"/>
 
-  <g filter="url(#shadow)">
-    <path d="M116 36 h122 l44 44 v116 H116 Z" fill="url(#page)"/>
-    <path d="M238 36 v44 h44 Z" fill="#93c5fd"/>
-    <rect x="138" y="82" width="82" height="12" rx="6" fill="#1e3a8a"/>
-    <rect x="138" y="116" width="122" height="10" rx="5" fill="#60a5fa"/>
-    <rect x="138" y="142" width="96" height="10" rx="5" fill="#22c55e"/>
+  <g clip-path="url(#bannerClip)">
+    <rect width="820" height="240" fill="url(#dotGrid)"/>
+    <ellipse cx="706" cy="32" rx="268" ry="216" fill="url(#glow)"/>
+    <path d="M-28 216C94 155 180 206 291 189C421 169 535 118 848 82V260H-28Z" fill="#2563EB" fill-opacity=".14"/>
+    <path d="M-18 226C111 181 213 226 335 196C470 162 603 147 838 114" fill="none" stroke="#38BDF8" stroke-opacity=".13" stroke-width="2"/>
   </g>
 
-  <g transform="translate(58 130)">
-    <rect width="170" height="74" rx="12" fill="#0f172a" stroke="#38bdf8" stroke-width="2"/>
-    <path d="M30 30 l20 16 -20 16" fill="none" stroke="#22c55e" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
-    <rect x="68" y="52" width="66" height="7" rx="3.5" fill="#e2e8f0"/>
+  <g filter="url(#panelShadow)">
+    <rect x="38" y="28" width="244" height="184" rx="24" fill="#081329" fill-opacity=".72" stroke="#93C5FD" stroke-opacity=".13"/>
+    <rect x="48" y="38" width="224" height="164" rx="18" fill="#0F1D3D" fill-opacity=".5"/>
   </g>
 
-  <g font-family="Segoe UI, Arial, sans-serif">
-    <text x="350" y="102" fill="#f8fafc" font-size="48" font-weight="700">SimpleLog-FP</text>
-    <text x="353" y="138" fill="#bfdbfe" font-size="20" font-weight="500">simple, lightweight logging for Free Pascal</text>
-    <g font-size="16" font-weight="700" text-anchor="middle">
-      <rect x="354" y="160" width="82" height="30" rx="15" fill="#2563eb"/>
-      <text x="395" y="175" dy=".35em" fill="#eff6ff">INFO</text>
-      <rect x="448" y="160" width="112" height="30" rx="15" fill="#f59e0b"/>
-      <text x="504" y="175" dy=".35em" fill="#111827">WARNING</text>
-      <rect x="572" y="160" width="86" height="30" rx="15" fill="#dc2626"/>
-      <text x="615" y="175" dy=".35em" fill="#fff7ed">ERROR</text>
+  <g filter="url(#softShadow)">
+    <path d="M106 32H176L218 74V176Q218 184 210 184H106Q96 184 96 174V42Q96 32 106 32Z" fill="url(#page)"/>
+    <path d="M176 32V66Q176 74 184 74H218Z" fill="url(#fold)"/>
+    <rect x="116" y="76" width="66" height="9" rx="4.5" fill="#1E3A8A"/>
+    <circle cx="120" cy="108" r="4" fill="#3B82F6"/>
+    <rect x="132" y="104" width="62" height="8" rx="4" fill="#93C5FD"/>
+    <circle cx="120" cy="132" r="4" fill="#F59E0B"/>
+    <rect x="132" y="128" width="46" height="8" rx="4" fill="#BFDBFE"/>
+    <circle cx="120" cy="156" r="4" fill="#EF4444"/>
+    <rect x="132" y="152" width="58" height="8" rx="4" fill="#BFDBFE"/>
+  </g>
+
+  <g filter="url(#softShadow)">
+    <rect x="52" y="124" width="176" height="78" rx="14" fill="#050B18" stroke="url(#terminalStroke)" stroke-width="2"/>
+    <circle cx="72" cy="143" r="3.5" fill="#EF4444"/>
+    <circle cx="84" cy="143" r="3.5" fill="#F59E0B"/>
+    <circle cx="96" cy="143" r="3.5" fill="#22C55E"/>
+    <path d="M75 160L91 173L75 186" fill="none" stroke="#22C55E" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="104" y="181" width="76" height="6" rx="3" fill="#E2E8F0"/>
+    <rect x="104" y="162" width="94" height="6" rx="3" fill="#475569"/>
+  </g>
+
+  <g font-family="Inter, Segoe UI, Arial, sans-serif">
+    <text x="326" y="53" fill="#7DD3FC" font-size="12" font-weight="700" letter-spacing="2.4">FREE PASCAL / LOGGING</text>
+
+    <text x="324" y="103" fill="#F8FAFC" font-size="46" font-weight="750" letter-spacing="-.8">
+      <tspan>SimpleLog</tspan><tspan fill="#7DD3FC">-FP</tspan>
+    </text>
+
+    <text x="327" y="136" fill="#CBD5E1" font-size="17" font-weight="500">Small API. Reliable text logs. Zero dependencies.</text>
+
+    <g font-size="11" font-weight="700" letter-spacing=".6">
+      <g>
+        <rect x="326" y="153" width="72" height="28" rx="14" fill="#071225" fill-opacity=".72" stroke="#60A5FA" stroke-opacity=".35"/>
+        <circle cx="341" cy="167" r="4" fill="#3B82F6"/>
+        <text x="351" y="171" fill="#DBEAFE">INFO</text>
+      </g>
+      <g>
+        <rect x="408" y="153" width="105" height="28" rx="14" fill="#071225" fill-opacity=".72" stroke="#FBBF24" stroke-opacity=".35"/>
+        <circle cx="423" cy="167" r="4" fill="#F59E0B"/>
+        <text x="433" y="171" fill="#FEF3C7">WARNING</text>
+      </g>
+      <g>
+        <rect x="523" y="153" width="83" height="28" rx="14" fill="#071225" fill-opacity=".72" stroke="#F87171" stroke-opacity=".35"/>
+        <circle cx="538" cy="167" r="4" fill="#EF4444"/>
+        <text x="548" y="171" fill="#FEE2E2">ERROR</text>
+      </g>
+    </g>
+
+    <g font-family="Cascadia Mono, Consolas, monospace" font-size="12">
+      <rect x="326" y="193" width="436" height="30" rx="9" fill="#050B18" fill-opacity=".72" stroke="#93C5FD" stroke-opacity=".13"/>
+      <circle cx="343" cy="208" r="3.5" fill="#22C55E"/>
+      <text x="354" y="212" fill="#64748B">12:42:08.315</text>
+      <text x="447" y="212" fill="#60A5FA">[INFO]</text>
+      <text x="496" y="212" fill="#E2E8F0">Application started</text>
     </g>
   </g>
 </svg>

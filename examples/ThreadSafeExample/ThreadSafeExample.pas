@@ -43,10 +43,10 @@ var
 begin
   WriteLn('=== Concurrent Logging & Silent Mode Example ===');
   WriteLn('Note: Multiple threads logging concurrently through SimpleLog.');
-  WriteLn('SimpleLog serializes logging operations internally.');
+  WriteLn('SimpleLog serializes in-process logging operations internally.');
   WriteLn;
   
-  // Initialize logger for both console and file
+  // Complete configuration before copying the logger into worker threads.
   Log := TSimpleLog.Both('threaded.log')
     .SetMinLevel(llInfo);
   

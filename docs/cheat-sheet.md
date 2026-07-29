@@ -72,8 +72,13 @@ Logger := Logger.SetSilent(True);
 Logger := Logger.SetSilent(False);              // Re-enable output
 
 // Console colors
-Logger := Logger.SetUseColors(False);           // Plain console output
-Logger := Logger.SetUseColors(True);            // Re-enable colors
+Logger := Logger.SetColorMode(ccmAuto);         // Colors only on a terminal (default)
+Logger := Logger.SetColorMode(ccmAlways);       // Always request colors
+Logger := Logger.SetColorMode(ccmNever);        // Always use plain output
+
+// File I/O errors
+Logger := Logger.SetErrorMode(lemSilent);       // Ignore logging failures (default)
+Logger := Logger.SetErrorMode(lemRaise);        // Raise ESimpleLogError
 ```
 
 ## 📊 Log Levels
@@ -105,7 +110,8 @@ Logger := TSimpleLog.Both('application.log')
   .SetMinLevel(llInfo)
   .SetMaxFileSize(5 * 1024 * 1024)
   .SetSilent(False)
-  .SetUseColors(True);
+  .SetColorMode(ccmAuto)
+  .SetErrorMode(lemSilent);
 
 // Reconfigure existing logger
 Logger := Logger
@@ -122,8 +128,8 @@ Logger := Logger
 // application.log -> application.log.1 (bounded backup)
 // New application.log is created
 
-// Thread safety: Logging calls and individual configuration methods are serialized
-// Configure before sharing a logger between threads for predictable behavior
+// Thread safety: logging calls, individual configuration methods, and property
+// reads are serialized within the process. Multi-step chains are not atomic.
 
 // (Flush is not needed; all writes are immediate)
 
@@ -136,7 +142,8 @@ WriteLn('Current log file: ', Logger.LogFile);
 WriteLn('Max file size: ', Logger.MaxFileSize);
 WriteLn('Min level: ', Ord(Logger.MinLevel));
 WriteLn('Silent mode: ', Logger.Silent);
-WriteLn('Use colors: ', Logger.UseColors);
+WriteLn('Color mode: ', Ord(Logger.ColorMode));
+WriteLn('Error mode: ', Ord(Logger.ErrorMode));
 ```
 
 ## 🎯 Common Patterns
@@ -160,7 +167,7 @@ TestLogger := TSimpleLog.Console.SetSilent(True);
 TestLogger.Info('This will not be displayed');
 
 // Plain console logger for CI or redirected output
-PlainLogger := TSimpleLog.Console.SetUseColors(False);
+PlainLogger := TSimpleLog.Console.SetColorMode(ccmNever);
 PlainLogger.Info('No color control codes are written');
 
 // Multiple loggers for different components
@@ -186,7 +193,7 @@ Logger.Debug('Technical details for debugging');          // Development only
 Logger.Info('Normal operational events');                 // General info
 Logger.Warning('Something unusual but not critical');     // Potential issues
 Logger.Error('Recoverable error occurred');               // Handle and continue
-Logger.Fatal('Critical error, cannot continue');          // Application must stop
+Logger.Fatal('Critical error, cannot continue');          // Caller decides whether to stop
 
 // ✅ DO: Configure once, use everywhere
 function CreateAppLogger: TSimpleLog;
@@ -207,10 +214,15 @@ begin
   DebugLogger := TSimpleLog.Console.SetMinLevel(llDebug);
 end;
 
-// ✅ DO: Handle file path issues gracefully
-// SimpleLog will handle invalid paths silently - your app won't crash
-Logger := TSimpleLog.FileLog('/invalid/path/app.log');
-Logger.Info('This handles errors gracefully');
+// ✅ DO: Choose whether file errors are silent or observable
+Logger := TSimpleLog.FileLog('/required/path/app.log')
+  .SetErrorMode(lemRaise);
+try
+  Logger.Info('This write is required');
+except
+  on E: ESimpleLogError do
+    WriteLn(StdErr, E.Message);
+end;
 ```
 
 ## Migration from Old Logger-FP

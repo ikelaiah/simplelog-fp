@@ -81,6 +81,13 @@ type
     procedure Test30_InvalidPathDoesNotRaise;
     procedure Test31_RotationReplacesBoundedBackup;
     procedure Test32_UseColorsCanBeDisabled;
+    procedure Test33_ColorModes;
+    procedure Test34_RaiseErrorMode;
+    procedure Test35_FailedRotationPreservesLogs;
+    procedure Test36_FailedRotationRaisesWhenConfigured;
+    procedure Test37_RedirectedConsoleColorBehavior;
+    procedure Test38_UnicodeFileLogging;
+    procedure Test39_LockedActiveRotationPreservesLogs;
   end;
 
 implementation
@@ -172,6 +179,34 @@ begin
   finally
     FileContent.Free;
   end;
+end;
+
+procedure WriteTextFile(const AFileName, AContent: string);
+var
+  FileContent: TStringList;
+begin
+  FileContent := TStringList.Create;
+  try
+    FileContent.Text := AContent;
+    FileContent.SaveToFile(AFileName);
+  finally
+    FileContent.Free;
+  end;
+end;
+
+function CaptureConsoleOutput(const AFileName: string; ALogger: TSimpleLog): string;
+begin
+  Assign(Output, AFileName);
+  Rewrite(Output);
+  try
+    ALogger.Warning('redirected color test');
+    Flush(Output);
+  finally
+    Close(Output);
+    Assign(Output, '');
+    Rewrite(Output);
+  end;
+  Result := ReadTextFile(AFileName);
 end;
 
 procedure TSimpleLogTest.SetUp;
@@ -638,7 +673,7 @@ const
   MESSAGES_PER_THREAD = 50;
 var
   Log: TSimpleLog;
-  i: Integer;
+  i, j: Integer;
   Threads: array[1..THREAD_COUNT] of TLogWorkerThread;
   FileContent: TStringList;
 begin
@@ -658,6 +693,10 @@ begin
     FileContent.LoadFromFile(FLogFile);
     AssertEquals('Log file should contain every threaded message',
       THREAD_COUNT * MESSAGES_PER_THREAD, FileContent.Count);
+    for i := 1 to THREAD_COUNT do
+      for j := 1 to MESSAGES_PER_THREAD do
+        AssertTrue(Format('Threaded log should contain thread %d message %d', [i, j]),
+          Pos(Format('Thread %d message %d', [i, j]), FileContent.Text) > 0);
   finally
     FileContent.Free;
   end;
@@ -788,14 +827,19 @@ begin
     .SetMinLevel(llError)
     .SetMaxFileSize(2048)
     .SetSilent(True)
-    .SetUseColors(False);
+    .SetColorMode(ccmNever)
+    .SetErrorMode(lemRaise);
 
   AssertTrue('Outputs property should reflect configured outputs', Log.Outputs = [odFile]);
   AssertTrue('LogFile property should reflect configured file', Log.LogFile = FLogFile);
   AssertTrue('MinLevel property should reflect configured level', Log.MinLevel = llError);
   AssertTrue('MaxFileSize property should reflect configured size', Log.MaxFileSize = 2048);
   AssertTrue('Silent property should reflect configured silent mode', Log.Silent);
+  AssertTrue('ColorMode property should reflect configured color mode',
+    Log.ColorMode = ccmNever);
   AssertFalse('UseColors property should reflect configured color mode', Log.UseColors);
+  AssertTrue('ErrorMode property should reflect configured error mode',
+    Log.ErrorMode = lemRaise);
 end;
 
 procedure TSimpleLogTest.Test26_FilteredFormatStringDoesNotFormat;
@@ -939,6 +983,182 @@ begin
 
   Log := Log.SetUseColors(True);
   AssertTrue('UseColors should be enabled', Log.UseColors);
+  AssertTrue('SetUseColors(True) should select always-on colors',
+    Log.ColorMode = ccmAlways);
+end;
+
+procedure TSimpleLogTest.Test33_ColorModes;
+var
+  Log: TSimpleLog;
+begin
+  Log := TSimpleLog.Console;
+  AssertTrue('Console logger should default to automatic colors',
+    Log.ColorMode = ccmAuto);
+  AssertTrue('Automatic colors should be considered enabled', Log.UseColors);
+
+  Log := Log.SetColorMode(ccmNever);
+  AssertTrue('Color mode should be set to never', Log.ColorMode = ccmNever);
+  AssertFalse('UseColors should be false only for never mode', Log.UseColors);
+
+  Log := Log.SetColorMode(ccmAlways);
+  AssertTrue('Color mode should be set to always', Log.ColorMode = ccmAlways);
+  AssertTrue('UseColors should be true for always mode', Log.UseColors);
+end;
+
+procedure TSimpleLogTest.Test34_RaiseErrorMode;
+var
+  Log: TSimpleLog;
+  ErrorRaised: Boolean;
+begin
+  Log := TSimpleLog.FileLog(FTestDir);
+  AssertTrue('Loggers should silently ignore I/O errors by default',
+    Log.ErrorMode = lemSilent);
+
+  Log := Log.SetErrorMode(lemRaise);
+  ErrorRaised := False;
+  try
+    Log.Info('This attempts to write to a directory path');
+  except
+    on E: ESimpleLogError do
+      ErrorRaised := True;
+  end;
+
+  AssertTrue('Raise error mode should report file I/O failures', ErrorRaised);
+  AssertTrue('Invalid file target should remain intact', DirectoryExists(FTestDir));
+end;
+
+procedure TSimpleLogTest.Test35_FailedRotationPreservesLogs;
+var
+  Log: TSimpleLog;
+  ActiveContent: string;
+  BackupContent: string;
+  TemporaryBackupPath: string;
+begin
+  ActiveContent := StringOfChar('A', 1500);
+  BackupContent := 'previous backup';
+  WriteTextFile(FLogFile, ActiveContent);
+  WriteTextFile(FLogFile + '.1', BackupContent);
+
+  TemporaryBackupPath := FLogFile + '.1.tmp';
+  AssertTrue('Rotation failure fixture directory should be created',
+    CreateDir(TemporaryBackupPath));
+
+  Log := TSimpleLog.FileLog(FLogFile).SetMaxFileSize(1024);
+  Log.Info('message after failed rotation');
+
+  AssertLogContains(FLogFile, ActiveContent);
+  AssertLogContains(FLogFile, 'message after failed rotation');
+  AssertTrue('Failed rotation should preserve the previous backup',
+    Pos(BackupContent, ReadTextFile(FLogFile + '.1')) > 0);
+end;
+
+procedure TSimpleLogTest.Test36_FailedRotationRaisesWhenConfigured;
+var
+  Log: TSimpleLog;
+  ActiveContent: string;
+  BackupContent: string;
+  TemporaryBackupPath: string;
+  ErrorRaised: Boolean;
+begin
+  ActiveContent := StringOfChar('B', 1500);
+  BackupContent := 'previous backup for raise mode';
+  WriteTextFile(FLogFile, ActiveContent);
+  WriteTextFile(FLogFile + '.1', BackupContent);
+
+  TemporaryBackupPath := FLogFile + '.1.tmp';
+  AssertTrue('Rotation failure fixture directory should be created',
+    CreateDir(TemporaryBackupPath));
+
+  Log := TSimpleLog.FileLog(FLogFile)
+    .SetMaxFileSize(1024)
+    .SetErrorMode(lemRaise);
+  ErrorRaised := False;
+  try
+    Log.Info('message rejected by failed rotation');
+  except
+    on E: ESimpleLogError do
+      ErrorRaised := True;
+  end;
+
+  AssertTrue('Raise mode should report a rotation failure', ErrorRaised);
+  AssertTrue('Failed rotation should preserve the active log exactly',
+    ReadTextFile(FLogFile) = ActiveContent + LineEnding);
+  AssertTrue('Failed rotation should preserve the backup exactly',
+    ReadTextFile(FLogFile + '.1') = BackupContent + LineEnding);
+end;
+
+procedure TSimpleLogTest.Test37_RedirectedConsoleColorBehavior;
+var
+  Log: TSimpleLog;
+  CapturedOutput: string;
+  CaptureFile: string;
+begin
+  CaptureFile := FTestDir + PathDelim + 'console.log';
+
+  Log := TSimpleLog.Console.SetColorMode(ccmAuto);
+  CapturedOutput := CaptureConsoleOutput(CaptureFile, Log);
+  AssertTrue('Redirected automatic console output should contain the message',
+    Pos('redirected color test', CapturedOutput) > 0);
+  AssertFalse('Redirected automatic console output should not contain ANSI escapes',
+    Pos(#27, CapturedOutput) > 0);
+
+  Log := Log.SetColorMode(ccmNever);
+  CapturedOutput := CaptureConsoleOutput(CaptureFile, Log);
+  AssertFalse('Never-color console output should not contain ANSI escapes',
+    Pos(#27, CapturedOutput) > 0);
+
+  {$IFDEF UNIX}
+  Log := Log.SetColorMode(ccmAlways);
+  CapturedOutput := CaptureConsoleOutput(CaptureFile, Log);
+  AssertTrue('Always-color Unix output should contain ANSI escapes',
+    Pos(#27, CapturedOutput) > 0);
+  {$ENDIF}
+end;
+
+procedure TSimpleLogTest.Test38_UnicodeFileLogging;
+const
+  UNICODE_MESSAGE = 'Unicode: café — Ελληνικά — 日本語';
+var
+  Log: TSimpleLog;
+begin
+  Log := TSimpleLog.FileLog(FLogFile);
+  Log.Info(UNICODE_MESSAGE);
+  AssertLogContains(FLogFile, UNICODE_MESSAGE);
+end;
+
+procedure TSimpleLogTest.Test39_LockedActiveRotationPreservesLogs;
+{$IFDEF WINDOWS}
+var
+  Log: TSimpleLog;
+  LockedActiveFile: TFileStream;
+  ActiveContent: string;
+  BackupContent: string;
+{$ENDIF}
+begin
+  {$IFDEF WINDOWS}
+  ActiveContent := StringOfChar('C', 1500);
+  BackupContent := 'backup before locked rotation';
+  WriteTextFile(FLogFile, ActiveContent);
+  WriteTextFile(FLogFile + '.1', BackupContent);
+
+  LockedActiveFile := TFileStream.Create(FLogFile,
+    fmOpenRead or fmShareDenyWrite);
+  try
+    Log := TSimpleLog.FileLog(FLogFile).SetMaxFileSize(1024);
+    Log.Info('write while active log is locked');
+  finally
+    LockedActiveFile.Free;
+  end;
+
+  AssertTrue('A failed active-file rename should preserve the active log',
+    ReadTextFile(FLogFile) = ActiveContent + LineEnding);
+  AssertTrue('A failed active-file rename should restore the previous backup',
+    ReadTextFile(FLogFile + '.1') = BackupContent + LineEnding);
+  AssertFalse('A failed active-file rename should not strand a temporary backup',
+    FileExists(FLogFile + '.1.tmp'));
+  {$ELSE}
+  AssertTrue('Locked active-file rename behavior is Windows-specific', True);
+  {$ENDIF}
 end;
 
 initialization

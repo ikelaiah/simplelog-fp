@@ -68,8 +68,19 @@ begin
 
   // Example 7: Plain console output without colors
   WriteLn('7. Plain console output:');
-  Log := TSimpleLog.Console.SetUseColors(False);
+  Log := TSimpleLog.Console.SetColorMode(ccmNever);
   Log.Info('This message is written without console colors');
+  WriteLn;
+
+  // Example 8: Opt into exceptions for required file output
+  WriteLn('8. Observable file errors:');
+  Log := TSimpleLog.FileLog('required.log').SetErrorMode(lemRaise);
+  try
+    Log.Info('This required file write succeeded');
+  except
+    on E: ESimpleLogError do
+      WriteLn(StdErr, 'Logging failed: ', E.Message);
+  end;
   WriteLn;
   
   WriteLn('Demo completed! Check the log files created.');

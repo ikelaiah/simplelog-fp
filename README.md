@@ -9,21 +9,21 @@
 [![Lazarus](https://img.shields.io/badge/Lazarus-4.0+-60A5FA.svg)](https://www.lazarus-ide.org/)
 ![Supports Windows](https://img.shields.io/badge/support-Windows-F59E0B?logo=Windows)
 ![Supports Linux](https://img.shields.io/badge/support-Linux-F59E0B?logo=Linux)
-[![Version](https://img.shields.io/badge/version-0.9.0-8B5CF6.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.0.0-8B5CF6.svg)](CHANGELOG.md)
 ![No Dependencies](https://img.shields.io/badge/dependencies-none-10B981.svg)
 
 > [!Note]
-> SimpleLog-FP is currently in active development. This is a pre-1.0 release (v0.9.0). The API may change and feedback is welcome!
+> SimpleLog-FP 1.0.0 provides the first stable public API. Feedback and focused improvements remain welcome.
 
 
 A **simple**, **lightweight**, and **easy-to-use** logging library for Free Pascal applications.
 
-> **Why SimpleLog-FP?** 🤔 Built from the need for a logging library that is actually simple to use and maintain. No feature bloat, no complexity - just clean, reliable logging for console, file, or both.
+> **Why SimpleLog-FP?** 🤔 Built for projects that want logs without ceremony — clean, reliable output to console, file, or both, with a small API you can learn in a few minutes.
 
 ## 🎯 Design Philosophy
 
 - ✅ **Simple** - Easy for new developers to understand and use
-- ✅ **Lightweight** - ~460 lines of code, no bloat
+- ✅ **Lightweight** - One focused source unit, no framework or runtime setup
 - ✅ **Maintainable** - Clean code and easily maintainable
 - ✅ **Focused** - Does three things well: console, file, and console+file logging
 - ✅ **No dependencies** - Uses only standard Free Pascal units
@@ -74,18 +74,56 @@ end;
 
 For a short walkthrough, see [Getting Started](docs/getting-started.md).
 
+### 🌟 A More Realistic Example
+
+```pascal
+program MyApplication;
+uses SimpleLog, SysUtils;
+
+var
+  Log: TSimpleLog;
+  UserCount: Integer;
+begin
+  // Log to both console and file; hide debug messages in production
+  Log := TSimpleLog.Both('application.log')
+    .SetMinLevel(llInfo);
+
+  Log.Info('Application starting up');
+
+  try
+    UserCount := LoadUsers();
+    Log.Info('Loaded %d users from database', [UserCount]);
+
+    if UserCount = 0 then
+      Log.Warning('No users found in database');
+  except
+    on E: Exception do
+    begin
+      Log.Error('Startup failed: %s', [E.Message]);
+      ExitCode := 1;
+      Exit;
+    end;
+  end;
+
+  Log.Info('Application ready');
+  // ... main application loop ...
+  Log.Info('Application shutting down');
+end;
+```
+
 ## ✨ Features
 
 ### 📝 Core Logging
 
 - **5 log levels**: Debug, Info, Warning, Error, Fatal
-- **Timestamped messages**: Each log entry includes precise timestamp with milliseconds
-- **Optional colored console output** with appropriate colors per level
+- **Timestamped messages**: Each log entry includes local wall-clock time with milliseconds displayed
+- **Automatic colored console output** on interactive terminals, with always/never overrides
 - **File logging** with automatic directory creation
 - **Dual output** to both console and file simultaneously
 - **Format string support** for all log methods
-- **Thread safety** - logging operations are serialized for multi-threaded applications
+- **Thread safety** - logging, configuration calls, and property reads are serialized in-process
 - **Silent mode** to temporarily disable all logging output
+- **Configurable I/O error handling** - silent by default, with an opt-in exception mode
 
 ### Log Output Format
 
@@ -100,9 +138,10 @@ All log messages follow a consistent, readable format:
 ```
 
 **Timestamp format**: `yyyy-mm-dd hh:nn:ss.zzz`
-- ISO 8601 compatible date format (sortable)
-- 24-hour time format  
-- Millisecond precision for performance analysis
+- Local wall-clock time in a sortable, ISO-like format
+- 24-hour time with milliseconds displayed
+- No UTC offset or timezone is included
+- Use a monotonic timer—not log timestamps—for performance measurements
 - Consistent across console and file output
 
 ### ⚙️ Configuration
@@ -110,12 +149,12 @@ All log messages follow a consistent, readable format:
 - **Log level filtering** - set minimum level to reduce noise
 - **File rotation** - automatic rotation when files exceed size limit
 - **Custom file paths** with automatic directory creation
-- **Color control** - disable console colors for plain terminal output
+- **Color control** - automatic terminal detection with always/never overrides
 
 ### 🌍 Cross-Platform
 - **Windows**: Console colors via Windows API
 - **Unix/Linux**: Console colors via ANSI escape codes
-- **Consistent behavior** across platforms
+- **Consistent text format and file behavior** across platforms
 
 ## 📚 API Reference
 
@@ -147,7 +186,8 @@ Log := TSimpleLog.Console
   .SetFile('app.log')               // Set log file
   .SetMaxFileSize(5 * 1024 * 1024)  // 5MB rotation limit
   .SetSilent(False)                 // Enable/disable all logging
-  .SetUseColors(True);              // Enable/disable console colors
+  .SetColorMode(ccmAuto)            // Auto, always, or never
+  .SetErrorMode(lemSilent);          // Choose silent or exception behavior
 ```
 
 ### 🔧 Read-Only Properties
@@ -156,53 +196,13 @@ WriteLn(Log.LogFile);                // Current log file path
 WriteLn(Ord(Log.MinLevel));          // Current minimum log level
 WriteLn(Log.MaxFileSize);            // Current rotation size
 WriteLn(Log.Silent);                 // Current silent mode
-WriteLn(Log.UseColors);              // Current console color mode
+WriteLn(Ord(Log.ColorMode));          // Current console color mode
+WriteLn(Ord(Log.ErrorMode));          // Current file error mode
 ```
 
 Use the `Set...` methods for configuration. This keeps validation in one place and avoids direct property writes bypassing rules such as the minimum rotation size.
 
-## 📋 Examples
-
-### 🌟 Real-World Usage Example
-
-```pascal
-program MyApplication;
-uses SimpleLog;
-
-var
-  Log: TSimpleLog;
-  UserCount: Integer;
-begin
-  // Initialize logging to both console and file
-  Log := TSimpleLog.Both('application.log')
-    .SetMinLevel(llInfo);  // Hide debug messages in production
-  
-  Log.Info('Application starting up');
-  
-  try
-    // Your application logic
-    UserCount := LoadUsers();
-    Log.Info('Loaded %d users from database', [UserCount]);
-    
-    if UserCount = 0 then
-      Log.Warning('No users found in database');
-      
-  except
-    on E: Exception do
-    begin
-      Log.Error('Startup failed: %s', [E.Message]);
-      ExitCode := 1;
-      Exit;
-    end;
-  end;
-  
-  Log.Info('Application ready');
-  
-  // Your main application loop here...
-  
-  Log.Info('Application shutting down');
-end;
-```
+## 📋 More Examples
 
 ### 🔍 Level Filtering
 ```pascal
@@ -234,20 +234,37 @@ Log.Info('Logging is back on');
 
 ### 🎨 Plain Console Output
 ```pascal
-// Useful for redirected output, CI logs, or terminals without color support
-Log := TSimpleLog.Console.SetUseColors(False);
+// Auto is the default and avoids colors when output is redirected.
+// Use ccmNever when plain output is required unconditionally.
+Log := TSimpleLog.Console.SetColorMode(ccmNever);
 Log.Info('No color control codes are written');
+```
+
+`SetUseColors(False)` remains available as a convenience alias for
+`SetColorMode(ccmNever)`; `SetUseColors(True)` selects `ccmAlways`.
+
+### 🚨 File Error Policy
+
+```pascal
+// The default lemSilent policy keeps logging failures non-fatal.
+Log := TSimpleLog.FileLog('app.log').SetErrorMode(lemRaise);
+try
+  Log.Info('Write failures now raise ESimpleLogError');
+except
+  on E: ESimpleLogError do
+    WriteLn(StdErr, E.Message);
+end;
 ```
 
 ### 🧵 Thread Safety
 ```pascal
-// Logging operations and individual configuration methods are serialized internally.
-// Configure the logger before sharing it between threads for predictable behavior.
+// Logging, configuration methods, and property reads are serialized internally.
+// Configure before sharing when a multi-step configuration must be observed atomically.
 var
   Log: TSimpleLog;
 begin
   Log := TSimpleLog.Both('threaded.log');
-  // Use Log from multiple threads with confidence
+  // Concurrent calls in this process are serialized
   Log.Info('Multi-threaded logging works reliably');
 end;
 ```
@@ -267,12 +284,15 @@ SimpleLog uses Free Pascal's **advanced records** instead of classes:
 ```text
 SimpleLog-FP/
 ├── src/
-│   └── SimpleLog.pas          # Main library (~460 lines)
+│   └── SimpleLog.pas          # Main library
 ├── examples/
 │   ├── SimpleLogExample/      # Basic usage examples
 │   └── ThreadSafeExample/     # Concurrent logging demo
 ├── tests/
-│   └── SimpleLog.Test.pas     # Comprehensive test suite
+│   ├── SimpleLog.Test.pas     # Comprehensive test suite
+│   └── PackageConsumer.pas    # Lazarus package smoke consumer
+├── packages/lazarus/
+│   └── simplelog_fp.lpk       # Lazarus package
 ├── docs/
 │   ├── getting-started.md     # Short first-use guide
 │   ├── SimpleLogger.md        # User manual
@@ -283,11 +303,11 @@ SimpleLog-FP/
 
 ## 🧪 Tests
 
-A comprehensive test suite is provided in the `tests/` directory. To run the tests:
+A comprehensive 39-test suite is provided in the `tests/` directory. To run it:
 
 - Build the Lazarus test runner:
   ```bash
-  lazbuild tests/TestRunner.lpi
+  lazbuild --build-mode=Debug tests/TestRunner.lpi
   ```
 - Run the full suite:
   ```bash
@@ -299,22 +319,23 @@ A comprehensive test suite is provided in the `tests/` directory. To run the tes
 
 A ready-to-use Lazarus package is included for easy integration:
 
-- Open `packages/lazarus/simplelog.lpk` in the Lazarus IDE
+- Open `packages/lazarus/simplelog_fp.lpk` in the Lazarus IDE
 - Click "Use" → "Add to Project" to add SimpleLog-FP to your project
 - The package will automatically add the correct search paths
 
 This is the recommended way to add SimpleLog-FP to your Lazarus projects for the best experience.
 
-## 📊 Comparison with Complex Logging Libraries
+## 🎯 When SimpleLog-FP Fits
 
-| Feature | SimpleLog-FP | Complex Logger |
-|---------|--------------|----------------|
-| Lines of code | ~460 | 2000+ |
-| Learning curve | Minutes | Hours |
-| Features | 3 core outputs | 20+ features |
-| Maintenance | Easy | Complex |
-| Memory usage | Minimal | Higher |
-| Dependencies | None | Multiple |
+SimpleLog-FP is a good match when you want:
+
+- **CLI tools and small utilities** that need readable, timestamped output without pulling in a framework
+- **Small to medium applications** where console, file, or console+file logging covers your needs
+- **Quick prototypes and scripts** where `uses SimpleLog; Log := TSimpleLog.Console;` is all the setup you want
+- **Cross-platform projects** that need consistent behavior on Windows and Linux without extra dependencies
+- **Multi-threaded code** that needs basic serialized logging without configuring appenders or handlers
+
+If you need pluggable backends, structured/JSON logs, network sinks, or fine-grained per-category routing, a larger framework will serve you better — and that's fine. SimpleLog-FP is intentionally scoped to the common case.
 
 ## 🤝 Contributing
 

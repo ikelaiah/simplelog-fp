@@ -1,24 +1,35 @@
 # Release Checklist
 
-Use this checklist when preparing a SimpleLog-FP release. Replace `0.9.0` and `v0.9.0` with the target version for later releases.
+Use this checklist when preparing a SimpleLog-FP release. Replace `1.0.0` and
+`v1.0.0` with the target version for later releases.
 
 ## Before Release
 
-- Start from `main` with a clean worktree:
+- Start from the intended release branch and review the worktree:
   ```bash
   git status --short --branch
   ```
 - Confirm all version surfaces match the target release:
   ```bash
-  rg "0\\.9\\.0|v0\\.9\\.0|Version Minor" README.md CHANGELOG.md packages/lazarus/simplelog.lpk
+  rg "1\\.0\\.0|v1\\.0\\.0|Version Major" README.md CHANGELOG.md packages/lazarus/simplelog_fp.lpk
   ```
 - Build the Lazarus test runner:
   ```bash
-  lazbuild tests/TestRunner.lpi
+  lazbuild --build-mode=Debug tests/TestRunner.lpi
   ```
 - Run the full local test suite:
   ```bash
   tests/TestRunner.exe --all --format=plainnotiming
+  ```
+- Build the Lazarus package and verify a consumer against its compiled output:
+  ```bash
+  lazbuild --build-all packages/lazarus/simplelog_fp.lpk
+  fpc -Fupackages/lazarus/lib/x86_64-win64 tests/PackageConsumer.pas
+  ```
+- Build both examples:
+  ```bash
+  lazbuild --build-mode=Release examples/SimpleLogExample/SimpleLogExample.lpi
+  lazbuild --build-mode=Release examples/ThreadSafeExample/ThreadSafeExample.lpi
   ```
 - Check for whitespace problems:
   ```bash
@@ -32,12 +43,12 @@ Use this checklist when preparing a SimpleLog-FP release. Replace `0.9.0` and `v
 - Commit the release changes.
 - Create the signed release tag:
   ```bash
-  git tag -s v0.9.0 -m "Release v0.9.0"
+  git tag -s v1.0.0 -m "Release v1.0.0"
   ```
 - Push the commit and tag:
   ```bash
   git push origin main
-  git push origin v0.9.0
+  git push origin v1.0.0
   ```
 - Create the GitHub release from the `CHANGELOG.md` entry.
 

@@ -6,15 +6,24 @@ interface
 
 uses
   Classes, SysUtils
-  {$IFDEF WINDOWS}, Windows {$ENDIF};
+  {$IFDEF WINDOWS}, Windows{$ENDIF}
+  {$IFDEF UNIX}, Termio{$ENDIF};
 
 type
+  ESimpleLogError = class(Exception);
+
   { Log level enumeration }
   TLogLevel = (llDebug, llInfo, llWarning, llError, llFatal);
   
   { Output destination enumeration }
   TOutputDestination = (odConsole, odFile);
   TOutputDestinations = set of TOutputDestination;
+
+  { Console color behavior }
+  TConsoleColorMode = (ccmAuto, ccmAlways, ccmNever);
+
+  { Logging I/O error behavior }
+  TLogErrorMode = (lemSilent, lemRaise);
   
   { Simple logging advanced record }
   TSimpleLog = record
@@ -24,20 +33,31 @@ type
     FMinLevel: TLogLevel;
     FMaxFileSize: Int64;
     FSilent: Boolean;
-    FUseColors: Boolean;
+    FColorMode: TConsoleColorMode;
+    FErrorMode: TLogErrorMode;
 
     class function CreateLogger(AOutputs: TOutputDestinations; const AFileName: string): TSimpleLog; static;
     function ShouldLog(ALevel: TLogLevel): Boolean;
+    function ShouldUseColors: Boolean;
     procedure WriteToConsole(const AMessage: string; ALevel: TLogLevel);
     procedure WriteToFile(const AMessage: string);
     procedure SetConsoleColor(ALevel: TLogLevel);
-    procedure ResetConsoleColor;
     function GetLogLevelStr(ALevel: TLogLevel): string;
     function FormatMessage(ALevel: TLogLevel; const AMessage: string): string;
     procedure LogFmt(ALevel: TLogLevel; const AFormat: string; const AArgs: array of const);
+    procedure WriteLogEntry(ALevel: TLogLevel; const AMessage: string);
     procedure CheckFileRotation;
     function GetBackupFileName: string;
     function EnsureDirectoryExists(const ADir: string): Boolean;
+    procedure HandleError(const AOperation, ADetails: string);
+    function GetOutputs: TOutputDestinations;
+    function GetLogFile: string;
+    function GetMinLevel: TLogLevel;
+    function GetMaxFileSize: Int64;
+    function GetSilent: Boolean;
+    function GetColorMode: TConsoleColorMode;
+    function GetUseColors: Boolean;
+    function GetErrorMode: TLogErrorMode;
   public
     { Factory methods }
     class function Console: TSimpleLog; static;
@@ -50,7 +70,9 @@ type
     function SetMinLevel(ALevel: TLogLevel): TSimpleLog;
     function SetMaxFileSize(ASize: Int64): TSimpleLog;
     function SetSilent(ASilent: Boolean): TSimpleLog;
+    function SetColorMode(AMode: TConsoleColorMode): TSimpleLog;
     function SetUseColors(AUseColors: Boolean): TSimpleLog;
+    function SetErrorMode(AMode: TLogErrorMode): TSimpleLog;
 
     { Logging methods }
     procedure Log(ALevel: TLogLevel; const AMessage: string);
@@ -68,12 +90,14 @@ type
     procedure Fatal(const AFormat: string; const AArgs: array of const); overload;
 
     { Properties }
-    property Outputs: TOutputDestinations read FOutputs;
-    property LogFile: string read FLogFile;
-    property MinLevel: TLogLevel read FMinLevel;
-    property MaxFileSize: Int64 read FMaxFileSize;
-    property Silent: Boolean read FSilent;
-    property UseColors: Boolean read FUseColors;
+    property Outputs: TOutputDestinations read GetOutputs;
+    property LogFile: string read GetLogFile;
+    property MinLevel: TLogLevel read GetMinLevel;
+    property MaxFileSize: Int64 read GetMaxFileSize;
+    property Silent: Boolean read GetSilent;
+    property ColorMode: TConsoleColorMode read GetColorMode;
+    property UseColors: Boolean read GetUseColors;
+    property ErrorMode: TLogErrorMode read GetErrorMode;
   end;
 
 
@@ -104,7 +128,8 @@ begin
   Result.FMinLevel := llDebug;
   Result.FMaxFileSize := DEFAULT_MAX_FILE_SIZE;
   Result.FSilent := False;
-  Result.FUseColors := True;
+  Result.FColorMode := ccmAuto;
+  Result.FErrorMode := lemSilent;
 end;
 
 class function TSimpleLog.Console: TSimpleLog; static;
@@ -183,9 +208,28 @@ end;
 
 function TSimpleLog.SetUseColors(AUseColors: Boolean): TSimpleLog;
 begin
+  if AUseColors then
+    Result := SetColorMode(ccmAlways)
+  else
+    Result := SetColorMode(ccmNever);
+end;
+
+function TSimpleLog.SetColorMode(AMode: TConsoleColorMode): TSimpleLog;
+begin
   EnterLogLock;
   try
-    FUseColors := AUseColors;
+    FColorMode := AMode;
+    Result := Self;
+  finally
+    LeaveLogLock;
+  end;
+end;
+
+function TSimpleLog.SetErrorMode(AMode: TLogErrorMode): TSimpleLog;
+begin
+  EnterLogLock;
+  try
+    FErrorMode := AMode;
     Result := Self;
   finally
     LeaveLogLock;
@@ -197,18 +241,54 @@ begin
   Result := (not FSilent) and (ALevel >= FMinLevel);
 end;
 
-procedure TSimpleLog.SetConsoleColor(ALevel: TLogLevel);
+function TSimpleLog.ShouldUseColors: Boolean;
+{$IFDEF WINDOWS}
+var
+  ConsoleMode: DWORD;
+  ConsoleHandle: THandle;
+{$ENDIF}
 begin
-  if not FUseColors then
-    Exit;
-
   {$IFDEF WINDOWS}
+  ConsoleMode := 0;
+  {$ENDIF}
+  case FColorMode of
+    ccmAlways:
+      Result := True;
+    ccmNever:
+      Result := False;
+    ccmAuto:
+      begin
+        {$IFDEF WINDOWS}
+        ConsoleHandle := THandle(TextRec(Output).Handle);
+        Result := (ConsoleHandle <> INVALID_HANDLE_VALUE) and
+          GetConsoleMode(ConsoleHandle, ConsoleMode);
+        {$ELSE}
+          {$IFDEF UNIX}
+          Result := IsATTY(Output) = 1;
+          {$ELSE}
+          Result := False;
+          {$ENDIF}
+        {$ENDIF}
+      end;
+  else
+    Result := False;
+  end;
+end;
+
+procedure TSimpleLog.SetConsoleColor(ALevel: TLogLevel);
+{$IFDEF WINDOWS}
+var
+  ConsoleHandle: THandle;
+{$ENDIF}
+begin
+  {$IFDEF WINDOWS}
+  ConsoleHandle := THandle(TextRec(Output).Handle);
   case ALevel of
-    llDebug: SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 8);    // Gray
-    llInfo: SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 7);     // White
-    llWarning: SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 14); // Yellow
-    llError: SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 12);   // Red
-    llFatal: SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 79);   // White on Red
+    llDebug: SetConsoleTextAttribute(ConsoleHandle, 8);    // Gray
+    llInfo: SetConsoleTextAttribute(ConsoleHandle, 7);     // White
+    llWarning: SetConsoleTextAttribute(ConsoleHandle, 14); // Yellow
+    llError: SetConsoleTextAttribute(ConsoleHandle, 12);   // Red
+    llFatal: SetConsoleTextAttribute(ConsoleHandle, 79);   // White on Red
   end;
   {$ENDIF}
   {$IFDEF UNIX}
@@ -219,19 +299,6 @@ begin
     llError: System.Write(#27'[31m');    // Red
     llFatal: System.Write(#27'[97;41m'); // White on Red
   end;
-  {$ENDIF}
-end;
-
-procedure TSimpleLog.ResetConsoleColor;
-begin
-  if not FUseColors then
-    Exit;
-
-  {$IFDEF WINDOWS}
-  SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 7); // Default
-  {$ENDIF}
-  {$IFDEF UNIX}
-  System.Write(#27'[0m');
   {$ENDIF}
 end;
 
@@ -257,12 +324,39 @@ begin
 end;
 
 procedure TSimpleLog.WriteToConsole(const AMessage: string; ALevel: TLogLevel);
+var
+  ApplyColors: Boolean;
+  {$IFDEF WINDOWS}
+  ConsoleHandle: THandle;
+  ConsoleInfo: TConsoleScreenBufferInfo;
+  HaveOriginalAttributes: Boolean;
+  {$ENDIF}
 begin
-  SetConsoleColor(ALevel);
+  ApplyColors := ShouldUseColors;
+
+  {$IFDEF WINDOWS}
+  ConsoleInfo := Default(TConsoleScreenBufferInfo);
+  ConsoleHandle := THandle(TextRec(Output).Handle);
+  HaveOriginalAttributes := ApplyColors and
+    GetConsoleScreenBufferInfo(ConsoleHandle, ConsoleInfo);
+  {$ENDIF}
+
+  if ApplyColors then
+    SetConsoleColor(ALevel);
+
   try
     Write(AMessage);
   finally
-    ResetConsoleColor;
+    if ApplyColors then
+    begin
+      {$IFDEF WINDOWS}
+      if HaveOriginalAttributes then
+        SetConsoleTextAttribute(ConsoleHandle, ConsoleInfo.wAttributes);
+      {$ENDIF}
+      {$IFDEF UNIX}
+      System.Write(#27'[0m');
+      {$ENDIF}
+    end;
   end;
   WriteLn;
 end;
@@ -277,6 +371,7 @@ var
   CurrentFileSize: Int64;
   FileStream: TFileStream;
   BackupFileName: string;
+  TemporaryBackupFileName: string;
 begin
   if not FileExists(FLogFile) then
     Exit;
@@ -289,35 +384,56 @@ begin
       FileStream.Free;
     end;
   except
-    // If we can't access the file, exit silently
-    Exit;
+    on E: Exception do
+    begin
+      HandleError('Unable to inspect log file for rotation', E.Message);
+      Exit;
+    end;
   end;
 
   // If file size exceeds the limit, keep one bounded backup and start fresh.
   if CurrentFileSize >= FMaxFileSize then
   begin
     BackupFileName := GetBackupFileName;
-    
-    try
-      if FileExists(BackupFileName) then
-        SysUtils.DeleteFile(BackupFileName);
 
-      if RenameFile(FLogFile, BackupFileName) then
-      begin
-        // File was successfully renamed, new writes will create a fresh file
-      end else
-      begin
-        // If rename fails, just delete the old file to start fresh
-        SysUtils.DeleteFile(FLogFile);
-      end;
-    except
-      // If both rename and delete fail, try to truncate
-      try
-        FileStream := TFileStream.Create(FLogFile, fmCreate);
-        FileStream.Free;
-      except
-        // Last resort - ignore the error and continue
-      end;
+    if not FileExists(BackupFileName) then
+    begin
+      if not RenameFile(FLogFile, BackupFileName) then
+        HandleError('Unable to rotate log file',
+          'the active log could not be renamed; logging will continue in the active file');
+      Exit;
+    end;
+
+    TemporaryBackupFileName := BackupFileName + '.tmp';
+    if FileExists(TemporaryBackupFileName) and
+      not SysUtils.DeleteFile(TemporaryBackupFileName) then
+    begin
+      HandleError('Unable to rotate log file',
+        'the stale temporary backup could not be removed');
+      Exit;
+    end;
+
+    if not RenameFile(BackupFileName, TemporaryBackupFileName) then
+    begin
+      HandleError('Unable to rotate log file',
+        'the existing backup could not be staged');
+      Exit;
+    end;
+
+    if not RenameFile(FLogFile, BackupFileName) then
+    begin
+      if not RenameFile(TemporaryBackupFileName, BackupFileName) then
+        HandleError('Unable to restore the previous log backup',
+          'the previous backup remains in the temporary backup file');
+      HandleError('Unable to rotate log file',
+        'the active log could not be renamed; logging will continue in the active file');
+      Exit;
+    end;
+
+    if not SysUtils.DeleteFile(TemporaryBackupFileName) then
+    begin
+      HandleError('Unable to finish log rotation',
+        'the previous temporary backup could not be removed');
     end;
   end;
 end;
@@ -328,20 +444,26 @@ var
   Dir: string;
 begin
   if FLogFile = '' then
-    Exit;
-
-  // Create directory if it doesn't exist
-  Dir := ExtractFilePath(FLogFile);
-  if (Dir <> '') and not DirectoryExists(Dir) then
   begin
-    if not EnsureDirectoryExists(Dir) then
-      Exit; // If we can't create the directory, exit silently
+    HandleError('Unable to write log file', 'the log file name is empty');
+    Exit;
   end;
 
-  // Check if rotation is needed before writing
-  CheckFileRotation;
-
   try
+    // Create directory if it doesn't exist
+    Dir := ExtractFilePath(FLogFile);
+    if (Dir <> '') and not DirectoryExists(Dir) then
+    begin
+      if not EnsureDirectoryExists(Dir) then
+      begin
+        HandleError('Unable to create log directory', Dir);
+        Exit;
+      end;
+    end;
+
+    // Check if rotation is needed before writing
+    CheckFileRotation;
+
     if FileExists(FLogFile) then
       FileStream := TFileStream.Create(FLogFile, fmOpenReadWrite or fmShareDenyNone)
     else
@@ -351,37 +473,40 @@ begin
       FileStream.Seek(0, soEnd); // Move to the end of the file
       
       // Write the message with newline
-      FileStream.Write(PChar(AMessage)^, Length(AMessage));
-      FileStream.Write(PChar(LineEnding)^, Length(LineEnding));
+      if AMessage <> '' then
+        FileStream.WriteBuffer(PChar(AMessage)^, Length(AMessage));
+      if LineEnding <> '' then
+        FileStream.WriteBuffer(PChar(LineEnding)^, Length(LineEnding));
     finally
       FileStream.Free;
     end;
   except
-    // Silent failure - don't crash the application for logging errors
+    on E: ESimpleLogError do
+      raise;
+    on E: Exception do
+      HandleError('Unable to write log file', E.Message);
   end;
 end;
 
-procedure TSimpleLog.Log(ALevel: TLogLevel; const AMessage: string);
+procedure TSimpleLog.WriteLogEntry(ALevel: TLogLevel; const AMessage: string);
 var
   FormattedMessage: string;
 begin
-  if not ShouldLog(ALevel) then
-    Exit;
+  FormattedMessage := FormatMessage(ALevel, AMessage);
 
+  if odConsole in FOutputs then
+    WriteToConsole(FormattedMessage, ALevel);
+
+  if odFile in FOutputs then
+    WriteToFile(FormattedMessage);
+end;
+
+procedure TSimpleLog.Log(ALevel: TLogLevel; const AMessage: string);
+begin
   EnterLogLock;
   try
-    if not ShouldLog(ALevel) then
-      Exit;
-
-    FormattedMessage := FormatMessage(ALevel, AMessage);
-
-    // Output to console if enabled
-    if odConsole in FOutputs then
-      WriteToConsole(FormattedMessage, ALevel);
-
-    // Output to file if enabled
-    if odFile in FOutputs then
-      WriteToFile(FormattedMessage);
+    if ShouldLog(ALevel) then
+      WriteLogEntry(ALevel, AMessage);
   finally
     LeaveLogLock;
   end;
@@ -389,10 +514,13 @@ end;
 
 procedure TSimpleLog.LogFmt(ALevel: TLogLevel; const AFormat: string; const AArgs: array of const);
 begin
-  if not ShouldLog(ALevel) then
-    Exit;
-
-  Log(ALevel, Format(AFormat, AArgs));
+  EnterLogLock;
+  try
+    if ShouldLog(ALevel) then
+      WriteLogEntry(ALevel, Format(AFormat, AArgs));
+  finally
+    LeaveLogLock;
+  end;
 end;
 
 procedure TSimpleLog.Debug(const AMessage: string);
@@ -448,6 +576,93 @@ end;
 function TSimpleLog.EnsureDirectoryExists(const ADir: string): Boolean;
 begin
   Result := ForceDirectories(ADir);
+end;
+
+procedure TSimpleLog.HandleError(const AOperation, ADetails: string);
+begin
+  if FErrorMode = lemRaise then
+    raise ESimpleLogError.CreateFmt('%s "%s": %s',
+      [AOperation, FLogFile, ADetails]);
+end;
+
+function TSimpleLog.GetOutputs: TOutputDestinations;
+begin
+  EnterLogLock;
+  try
+    Result := FOutputs;
+  finally
+    LeaveLogLock;
+  end;
+end;
+
+function TSimpleLog.GetLogFile: string;
+begin
+  EnterLogLock;
+  try
+    Result := FLogFile;
+  finally
+    LeaveLogLock;
+  end;
+end;
+
+function TSimpleLog.GetMinLevel: TLogLevel;
+begin
+  EnterLogLock;
+  try
+    Result := FMinLevel;
+  finally
+    LeaveLogLock;
+  end;
+end;
+
+function TSimpleLog.GetMaxFileSize: Int64;
+begin
+  EnterLogLock;
+  try
+    Result := FMaxFileSize;
+  finally
+    LeaveLogLock;
+  end;
+end;
+
+function TSimpleLog.GetSilent: Boolean;
+begin
+  EnterLogLock;
+  try
+    Result := FSilent;
+  finally
+    LeaveLogLock;
+  end;
+end;
+
+function TSimpleLog.GetColorMode: TConsoleColorMode;
+begin
+  EnterLogLock;
+  try
+    Result := FColorMode;
+  finally
+    LeaveLogLock;
+  end;
+end;
+
+function TSimpleLog.GetUseColors: Boolean;
+begin
+  EnterLogLock;
+  try
+    Result := FColorMode <> ccmNever;
+  finally
+    LeaveLogLock;
+  end;
+end;
+
+function TSimpleLog.GetErrorMode: TLogErrorMode;
+begin
+  EnterLogLock;
+  try
+    Result := FErrorMode;
+  finally
+    LeaveLogLock;
+  end;
 end;
 
 initialization

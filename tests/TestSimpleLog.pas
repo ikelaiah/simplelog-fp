@@ -3,6 +3,9 @@ program TestSimpleLog;
 {$mode objfpc}{$H+}
 
 uses
+  {$IFDEF UNIX}
+  cthreads,
+  {$ENDIF}
   SysUtils, SimpleLog;
 
 procedure TestBasicFunctionality;
@@ -92,6 +95,27 @@ begin
   WriteLn('✓ Method chaining tests passed');
 end;
 
+procedure TestArchivingLogFiles;
+var
+  Log: TSimpleLog;
+  i : Word;
+begin
+  WriteLn('Testing archiving log files...');
+
+  Log := TSimpleLog.Console
+    .SetMinLevel(llInfo)
+    .SetFile('archiving.log')
+    .SetOutputs([odConsole, odFile]);
+    .SetMaxFileSize(1 * 512 * 512);
+  Log.ArchiveLogFiles := True;
+  Log.MaxRotateFiles := 3;
+
+  for i := 0 to 20000 do
+    Log.Info('Archiving log files works!');
+
+  WriteLn('✓ Archiving log files tests passed');
+end;
+
 begin
   WriteLn('=== SimpleLog-FP Test Suite ===');
   WriteLn;
@@ -110,6 +134,9 @@ begin
     WriteLn;
     
     TestMethodChaining;
+    WriteLn;
+
+    TestArchivingLogFiles;
     WriteLn;
     
     WriteLn('🎉 All tests passed!');

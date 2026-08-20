@@ -865,8 +865,5 @@ initialization
 
 finalization
   System.DoneCriticalSection(GLogLock);
-  //Just to be on the safe side, we check the parallel flow when closing.
-  if Assigned(TSimpleLog.ThreadArchiveLogFile) then
-    TSimpleLog.ThreadArchiveLogFile.WaitFor;
 
 end.

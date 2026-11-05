@@ -125,6 +125,14 @@ TConsoleColorScope = (ccsLevel, ccsLine);
 - `ccsLevel` is the default. Only the `[LEVEL]` tag is colored.
 - `ccsLine` colors the whole line (the 1.0 behavior).
 
+| Level | `ccsLevel` tag | `ccsLine` line |
+|---|---|---|
+| DEBUG | gray | gray |
+| INFO | blue | default |
+| WARNING | yellow | yellow |
+| ERROR | red | red |
+| FATAL | white on red | white on red |
+
 On Windows, SimpleLog restores the console attributes that were active before
 each message rather than imposing a hardcoded default.
 

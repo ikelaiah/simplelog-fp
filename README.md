@@ -111,6 +111,36 @@ begin
 end;
 ```
 
+### Archiving log files
+
+```pascal
+program myapplication;
+uses
+  {$IFDEF UNIX}
+  cthreads, //Required for archiving
+  {$ENDIF}
+  SimpleLog, SysUtils;
+
+var
+  Log: TSimpleLog;
+  UserCount: Integer;
+  i : Word;
+begin
+  // Log to both console and file; hide debug messages in production
+  Log := TSimpleLog.Both('archive.log')
+   .SetMinLevel(llInfo)
+   .SetMaxFileSize(1 * 1024 * 1024);
+  Log.ArchiveLogFiles := True;
+  Log.MaxRotateFiles := 5;
+
+  for i := 0 to 15000 do
+    Log.Info('This message №' + i.ToString + ' is written during log archiving');
+
+  WriteLn
+end.
+```
+
+
 ## ✨ Features
 
 ### 📝 Core Logging

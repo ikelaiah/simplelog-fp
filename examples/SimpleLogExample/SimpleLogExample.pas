@@ -3,12 +3,16 @@ program SimpleLogExample;
 {$mode objfpc}{$H+}
 
 uses
+  {$IFDEF UNIX}
+  cthreads,
+  {$ENDIF}
   SysUtils, SimpleLog;
 
 var
   Log: TSimpleLog;
   ConsoleOnly: TSimpleLog;
   FileOnly: TSimpleLog;
+  i : Word;
 
 begin
   WriteLn('=== SimpleLog-FP Demo ===');
@@ -82,7 +86,18 @@ begin
       WriteLn(StdErr, 'Logging failed: ', E.Message);
   end;
   WriteLn;
-  
+
+  // Example 9: Archiving log files
+  WriteLn('9. Archiving log files:');
+  Log := TSimpleLog.Both('archive.log')
+   .SetMinLevel(llDebug)
+   .SetMaxFileSize(1 * 1024 * 1024);
+  Log.ArchiveLogFiles := True;
+  Log.MaxRotateFiles := 5;
+  for i := 0 to 15000 do
+    Log.Debug('This message №' + i.ToString + ' is written during log archiving');
+  WriteLn;
+
   WriteLn('Demo completed! Check the log files created.');
   
   // Cleanup - no memory management needed with advanced records!

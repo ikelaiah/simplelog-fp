@@ -7,9 +7,12 @@ interface
 uses
   Classes, SysUtils
   {$IFDEF WINDOWS}, Windows{$ENDIF}
-  {$IFDEF UNIX}, Termio{$ENDIF};
+  {$IFDEF UNIX}, Termio{$ENDIF},
+  Zipper;
 
 type
+  TThreadArchiveLogFile = class;
+
   ESimpleLogError = class(Exception);
 
   { Log level enumeration }
@@ -26,8 +29,15 @@ type
   TLogErrorMode = (lemSilent, lemRaise);
   
   { Simple logging advanced record }
+
+  { TSimpleLog }
+
   TSimpleLog = record
   private
+    FArchiveLogFiles : Boolean;
+    FMaxRotateFiles : byte;
+    FCurrentFileLog : byte;
+    FNextFileLog : byte;
     FOutputs: TOutputDestinations;
     FLogFile: string;
     FMinLevel: TLogLevel;
@@ -35,8 +45,11 @@ type
     FSilent: Boolean;
     FColorMode: TConsoleColorMode;
     FErrorMode: TLogErrorMode;
+    class var ThreadArchiveLogFile : TThreadArchiveLogFile;
 
     class function CreateLogger(AOutputs: TOutputDestinations; const AFileName: string): TSimpleLog; static;
+    procedure SetArchiveLogFiles(AValue : Boolean);
+    procedure SetMaxRotateFiles(AValue : byte);
     function ShouldLog(ALevel: TLogLevel): Boolean;
     function ShouldUseColors: Boolean;
     procedure WriteToConsole(const AMessage: string; ALevel: TLogLevel);
@@ -58,6 +71,11 @@ type
     function GetColorMode: TConsoleColorMode;
     function GetUseColors: Boolean;
     function GetErrorMode: TLogErrorMode;
+
+    //Archiving the logs file
+    function ArchiveLogFile(const ALogFileName, AFileNameInArchive : String) : boolean;
+    //Determines the prefix that is appended to the log file during its rotation.
+    function DetermineSequenceNumberOfArchive() : byte;
   public
     { Factory methods }
     class function Console: TSimpleLog; static;
@@ -94,21 +112,62 @@ type
     property LogFile: string read GetLogFile;
     property MinLevel: TLogLevel read GetMinLevel;
     property MaxFileSize: Int64 read GetMaxFileSize;
+    property MaxRotateFiles : byte read FMaxRotateFiles write SetMaxRotateFiles;
+    property ArchiveLogFiles : Boolean read FArchiveLogFiles write SetArchiveLogFiles;
     property Silent: Boolean read GetSilent;
     property ColorMode: TConsoleColorMode read GetColorMode;
     property UseColors: Boolean read GetUseColors;
     property ErrorMode: TLogErrorMode read GetErrorMode;
   end;
 
+  { TThreadArchiveLogFile }
+
+  TThreadArchiveLogFile = class(TThread)  //Архивирует лог-файл и удаляет его
+    private
+      FLog : TSimpleLog;
+      FLogFileName : string;
+      FFileNameInArchive : string;
+      { Private declarations }
+    protected
+      procedure Execute; override;
+    public
+      constructor Create(const ALogFileName, AFileNameInArchive : string; var ALog : TSimpleLog);
+    end;
+
+resourcestring
+  lanExceededMaximumValue = 'The maximum allowed value of the log files has been exceeded';
 
 implementation
 
 const
   DEFAULT_MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
   MIN_MAX_FILE_SIZE = 1024; // 1KB minimum to prevent I/O overload
+  DEFAULT_ROTATE_FILES = 10;
 
 var
   GLogLock: TRTLCriticalSection;
+
+{ TThreadArchiveLogFile }
+
+constructor TThreadArchiveLogFile.Create(
+  const ALogFileName, AFileNameInArchive : string; var ALog : TSimpleLog);
+begin
+  inherited Create(False);
+  FreeOnTerminate:= True;
+  Priority := tpNormal;
+  FLog := ALog;
+  FLogFileName := ALogFileName;
+  FFileNameInArchive := AFileNameInArchive;
+end;
+
+procedure TThreadArchiveLogFile.Execute;
+begin
+  try
+    FLog.ArchiveLogFile(FLogFileName, FFileNameInArchive);
+  finally
+    Terminate
+  end
+end;
 
 procedure EnterLogLock;
 begin
@@ -127,9 +186,23 @@ begin
   Result.FLogFile := AFileName;
   Result.FMinLevel := llDebug;
   Result.FMaxFileSize := DEFAULT_MAX_FILE_SIZE;
+  Result.FMaxRotateFiles := DEFAULT_ROTATE_FILES;
+  Result.ArchiveLogFiles := False;
   Result.FSilent := False;
   Result.FColorMode := ccmAuto;
   Result.FErrorMode := lemSilent;
+end;
+
+procedure TSimpleLog.SetArchiveLogFiles(AValue : Boolean);
+begin
+  if FArchiveLogFiles = AValue then Exit;
+  FArchiveLogFiles := AValue
+end;
+
+procedure TSimpleLog.SetMaxRotateFiles(AValue : byte);
+begin
+  if FMaxRotateFiles = AValue then Exit;
+  FMaxRotateFiles := AValue
 end;
 
 class function TSimpleLog.Console: TSimpleLog; static;
@@ -394,48 +467,76 @@ begin
   // If file size exceeds the limit, keep one bounded backup and start fresh.
   if CurrentFileSize >= FMaxFileSize then
   begin
-    BackupFileName := GetBackupFileName;
+    if ArchiveLogFiles then
+      begin
+        if MaxRotateFiles <> 0 then
+          begin
+            FNextFileLog := DetermineSequenceNumberOfArchive();
+            BackupFileName := FLogFile + '.' + FNextFileLog.ToString
+          end
+        else
+          begin
+            BackupFileName := ChangeFileExt(FLogFile,
+              FormatDateTime('_yyyymmdd_hhnnss', Now) + ExtractFileExt(FLogFile))
+          end;
 
-    if not FileExists(BackupFileName) then
-    begin
-      if not RenameFile(FLogFile, BackupFileName) then
-        HandleError('Unable to rotate log file',
-          'the active log could not be renamed; logging will continue in the active file');
-      Exit;
-    end;
+        // Simply rename the current file to create a backup
+        if RenameFile(FLogFile, BackupFileName) then
+          begin
+            //We are archiving the file in a parallel stream. It can be archived in the main stream.
+            ThreadArchiveLogFile := TThreadArchiveLogFile.Create(BackupFileName, BackupFileName, Self);
+            sleep(50)
+          end else
+          begin
+            // If rename fails, just delete the old file to start fresh
+            SysUtils.DeleteFile(FLogFile)
+          end
+      end
+    else
+      begin
+        BackupFileName := GetBackupFileName;
 
-    TemporaryBackupFileName := BackupFileName + '.tmp';
-    if FileExists(TemporaryBackupFileName) and
-      not SysUtils.DeleteFile(TemporaryBackupFileName) then
-    begin
-      HandleError('Unable to rotate log file',
-        'the stale temporary backup could not be removed');
-      Exit;
-    end;
+        if not FileExists(BackupFileName) then
+        begin
+          if not RenameFile(FLogFile, BackupFileName) then
+            HandleError('Unable to rotate log file',
+              'the active log could not be renamed; logging will continue in the active file');
+          Exit;
+        end;
 
-    if not RenameFile(BackupFileName, TemporaryBackupFileName) then
-    begin
-      HandleError('Unable to rotate log file',
-        'the existing backup could not be staged');
-      Exit;
-    end;
+        TemporaryBackupFileName := BackupFileName + '.tmp';
+        if FileExists(TemporaryBackupFileName) and
+          not SysUtils.DeleteFile(TemporaryBackupFileName) then
+        begin
+          HandleError('Unable to rotate log file',
+            'the stale temporary backup could not be removed');
+          Exit;
+        end;
 
-    if not RenameFile(FLogFile, BackupFileName) then
-    begin
-      if not RenameFile(TemporaryBackupFileName, BackupFileName) then
-        HandleError('Unable to restore the previous log backup',
-          'the previous backup remains in the temporary backup file');
-      HandleError('Unable to rotate log file',
-        'the active log could not be renamed; logging will continue in the active file');
-      Exit;
-    end;
+        if not RenameFile(BackupFileName, TemporaryBackupFileName) then
+        begin
+          HandleError('Unable to rotate log file',
+            'the existing backup could not be staged');
+          Exit;
+        end;
 
-    if not SysUtils.DeleteFile(TemporaryBackupFileName) then
-    begin
-      HandleError('Unable to finish log rotation',
-        'the previous temporary backup could not be removed');
-    end;
-  end;
+        if not RenameFile(FLogFile, BackupFileName) then
+        begin
+          if not RenameFile(TemporaryBackupFileName, BackupFileName) then
+            HandleError('Unable to restore the previous log backup',
+              'the previous backup remains in the temporary backup file');
+          HandleError('Unable to rotate log file',
+            'the active log could not be renamed; logging will continue in the active file');
+          Exit;
+        end;
+
+        if not SysUtils.DeleteFile(TemporaryBackupFileName) then
+        begin
+          HandleError('Unable to finish log rotation',
+            'the previous temporary backup could not be removed')
+        end
+      end
+  end
 end;
 
 procedure TSimpleLog.WriteToFile(const AMessage: string);
@@ -663,6 +764,99 @@ begin
   finally
     LeaveLogLock;
   end;
+end;
+
+function TSimpleLog.ArchiveLogFile(
+  const ALogFileName, AFileNameInArchive : String) : boolean;
+var
+  OurZipper : TZipper;
+  fa : Longint;
+begin
+  Result := False;
+  OurZipper := TZipper.Create;
+  try
+    with OurZipper do
+      begin
+        FileName := ALogFileName + '.zip';
+        // As the first argument, specify the name of the file that will be included in the zip archive.
+        // The second argument is the file name as it appears in the zip archive, and later in the file system after unpacking.
+        Entries.AddFileEntry(ALogFileName, AFileNameInArchive);
+        // UTF8 encoding is written when UseLanguageEncoding is true.
+        UseLanguageEncoding := true;  // Требуется FPC 3.2+
+        // We perform the archiving operation and write the archived file.
+        ZipAllFiles
+      end;
+    // If the file has been created and the creation time matches the current moment, then we set Result to True.
+    fa := FileAge(OurZipper.FileName);
+    if FileExists(OurZipper.FileName) then
+      if DateTimeToStr(FileDateTodateTime(fa)) = DateTimeToStr(Now) then
+        Result := True;
+    // We delete the old file that has just been archived.
+    if Result then
+      begin
+        if FileExists(ALogFileName) then
+          try
+            SysUtils.DeleteFile(ALogFileName)
+          except on E : Exception do
+            writeln('Error: ', E.Message)
+          end
+      end;
+  finally
+    OurZipper.Free
+  end
+end;
+
+function TSimpleLog.DetermineSequenceNumberOfArchive : byte;
+var
+  i : byte;
+  BiggestTime : Int64 = 0;
+  ATimeFile : Int64 = 0;
+  NoFile : byte = 0;
+begin
+  if FMaxRotateFiles >= FMaxRotateFiles.MaxValue then
+    begin
+      writeln(lanExceededMaximumValue);
+      FMaxRotateFiles := FMaxRotateFiles.MaxValue
+    end;
+
+  for i := 1 to FMaxRotateFiles do
+    begin
+      if FileExists(FLogFile + '.' + i.ToString + '.zip') then
+        begin
+          ATimeFile := FileAge(FLogFile + '.' + i.ToString + '.zip');
+          if BiggestTime < ATimeFile then
+            begin
+              FCurrentFileLog := i;
+              if FCurrentFileLog = FMaxRotateFiles then
+                FCurrentFileLog := 0;
+              BiggestTime := ATimeFile
+            end
+        end
+      else
+        begin
+          if i = 1 then
+            begin
+              FCurrentFileLog := 0;
+              Inc(NoFile)
+            end
+          else
+            begin
+              Inc(NoFile);
+              FCurrentFileLog := i - NoFile
+            end
+        end
+    end;
+  if NoFile <> i then
+    begin
+      Inc(FCurrentFileLog);
+      Result := FCurrentFileLog
+    end
+  else
+    begin
+      FCurrentFileLog := 0;
+      Inc(FCurrentFileLog);
+      Result := FCurrentFileLog
+    end
 end;
 
 initialization

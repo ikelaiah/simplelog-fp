@@ -3,16 +3,13 @@ program SimpleLogExample;
 {$mode objfpc}{$H+}
 
 uses
-  {$IFDEF UNIX}
-  cthreads,
-  {$ENDIF}
   SysUtils, SimpleLog;
 
 var
   Log: TSimpleLog;
   ConsoleOnly: TSimpleLog;
   FileOnly: TSimpleLog;
-  i : Word;
+  i: Integer;
 
 begin
   WriteLn('=== SimpleLog-FP Demo ===');
@@ -87,15 +84,15 @@ begin
   end;
   WriteLn;
 
-  // Example 9: Archiving log files
-  WriteLn('9. Archiving log files:');
-  Log := TSimpleLog.Both('archive.log')
-   .SetMinLevel(llDebug)
-   .SetMaxFileSize(1 * 1024 * 1024);
-  Log.ArchiveLogFiles := True;
-  Log.MaxRotateFiles := 5;
-  for i := 0 to 15000 do
-    Log.Debug('This message №' + i.ToString + ' is written during log archiving');
+  // Example 9: Zip archiving of rotated logs
+  WriteLn('9. Zip archiving (archive.log.1.zip ... archive.log.3.zip):');
+  Log := TSimpleLog.FileLog('archive.log')
+    .SetMaxFileSize(64 * 1024)
+    .SetArchiveLogFiles(True)
+    .SetMaxRotateFiles(3);
+  for i := 1 to 5000 do
+    Log.Info('Archived message %d', [i]);
+  WriteLn('Wrote 5000 messages to archive.log with zip archiving');
   WriteLn;
 
   WriteLn('Demo completed! Check the log files created.');

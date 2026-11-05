@@ -9,7 +9,7 @@
 [![Lazarus](https://img.shields.io/badge/Lazarus-4.0+-60A5FA.svg)](https://www.lazarus-ide.org/)
 ![Supports Windows](https://img.shields.io/badge/support-Windows-F59E0B?logo=Windows)
 ![Supports Linux](https://img.shields.io/badge/support-Linux-F59E0B?logo=Linux)
-[![Version](https://img.shields.io/badge/version-1.0.0-8B5CF6.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.1.0-8B5CF6.svg)](CHANGELOG.md)
 ![No Dependencies](https://img.shields.io/badge/dependencies-none-10B981.svg)
 
 > [!Note]
@@ -29,6 +29,7 @@ A **simple**, **lightweight**, and **easy-to-use** logging library for Free Pasc
 - ✅ **No dependencies** - Uses only standard Free Pascal units
 - ✅ **Cross-platform** - Works on Windows and Unix systems
 - ✅ **File rotation** - Automatic log file rotation when size limits are reached
+- ✅ **Zip archiving** - Optional numbered `.zip` archives of rotated logs
 
 ## 🚀 Quick Start
 
@@ -111,36 +112,6 @@ begin
 end;
 ```
 
-### Archiving log files
-
-```pascal
-program myapplication;
-uses
-  {$IFDEF UNIX}
-  cthreads, //Required for archiving
-  {$ENDIF}
-  SimpleLog, SysUtils;
-
-var
-  Log: TSimpleLog;
-  UserCount: Integer;
-  i : Word;
-begin
-  // Log to both console and file; hide debug messages in production
-  Log := TSimpleLog.Both('archive.log')
-   .SetMinLevel(llInfo)
-   .SetMaxFileSize(1 * 1024 * 1024);
-  Log.ArchiveLogFiles := True;
-  Log.MaxRotateFiles := 5;
-
-  for i := 0 to 15000 do
-    Log.Info('This message №' + i.ToString + ' is written during log archiving');
-
-  WriteLn
-end.
-```
-
-
 ## ✨ Features
 
 ### 📝 Core Logging
@@ -178,8 +149,9 @@ All log messages follow a consistent, readable format:
 - **Method chaining** for fluent configuration
 - **Log level filtering** - set minimum level to reduce noise
 - **File rotation** - automatic rotation when files exceed size limit
+- **Zip archiving** - keep up to N compressed archives of rotated logs
 - **Custom file paths** with automatic directory creation
-- **Color control** - automatic terminal detection with always/never overrides
+- **Color control** - automatic terminal detection with always/never overrides; color only the level tag (default) or the whole line
 
 ### 🌍 Cross-Platform
 - **Windows**: Console colors via Windows API
@@ -217,6 +189,9 @@ Log := TSimpleLog.Console
   .SetMaxFileSize(5 * 1024 * 1024)  // 5MB rotation limit
   .SetSilent(False)                 // Enable/disable all logging
   .SetColorMode(ccmAuto)            // Auto, always, or never
+  .SetColorScope(ccsLevel)          // Color the [LEVEL] tag or the whole line
+  .SetArchiveLogFiles(False)        // Zip rotated logs
+  .SetMaxRotateFiles(10)            // Zip archives to keep
   .SetErrorMode(lemSilent);          // Choose silent or exception behavior
 ```
 
@@ -227,7 +202,10 @@ WriteLn(Ord(Log.MinLevel));          // Current minimum log level
 WriteLn(Log.MaxFileSize);            // Current rotation size
 WriteLn(Log.Silent);                 // Current silent mode
 WriteLn(Ord(Log.ColorMode));          // Current console color mode
+WriteLn(Ord(Log.ColorScope));         // Current console color scope
 WriteLn(Ord(Log.ErrorMode));          // Current file error mode
+WriteLn(Log.ArchiveLogFiles);         // Zip archiving on or off
+WriteLn(Log.MaxRotateFiles);          // Zip archives to keep
 ```
 
 Use the `Set...` methods for configuration. This keeps validation in one place and avoids direct property writes bypassing rules such as the minimum rotation size.
@@ -249,6 +227,16 @@ Log := TSimpleLog.Console.SetMinLevel(llDebug);
 Log := TSimpleLog.FileLog('big.log').SetMaxFileSize(1024 * 1024);
 Log.Info('This will rotate when file gets too big');
 // Rotation keeps one bounded backup: big.log.1
+```
+
+### 🗜️ Zip Archiving
+```pascal
+// Keep the 5 newest rotated logs as zip files
+Log := TSimpleLog.FileLog('app.log')
+  .SetMaxFileSize(1024 * 1024)
+  .SetArchiveLogFiles(True)
+  .SetMaxRotateFiles(5);
+// Archives: app.log.1.zip (newest) ... app.log.5.zip (oldest)
 ```
 
 ### 🔇 Silent Mode

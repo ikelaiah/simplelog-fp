@@ -9,6 +9,7 @@ uses
  ,SysUtils
  ,fpcunit
  ,testregistry
+ ,Zipper
  ,SimpleLog;
 
 
@@ -88,6 +89,12 @@ type
     procedure Test37_RedirectedConsoleColorBehavior;
     procedure Test38_UnicodeFileLogging;
     procedure Test39_LockedActiveRotationPreservesLogs;
+    procedure Test40_ArchiveAndColorScopeDefaults;
+    procedure Test41_ArchiveRotationCreatesZip;
+    procedure Test42_ArchiveRotationKeepsNewestArchives;
+    procedure Test43_FailedArchivePreservesLog;
+    procedure Test44_FailedArchiveRaisesWhenConfigured;
+    procedure Test45_ColorScopeLevelOnly;
   end;
 
 implementation
@@ -1158,6 +1165,168 @@ begin
     FileExists(FLogFile + '.1.tmp'));
   {$ELSE}
   AssertTrue('Locked active-file rename behavior is Windows-specific', True);
+  {$ENDIF}
+end;
+
+procedure FillAndRotate(ALogger: TSimpleLog; const AMarker: string);
+begin
+  // Push the active log past 1KB, then trigger rotation on the next write.
+  ALogger.Info(AMarker + ' ' + StringOfChar('x', 1100));
+  ALogger.Info('after ' + AMarker);
+end;
+
+function ReadArchivedLog(const AZipFileName, AOutputDir, AEntryName: string): string;
+var
+  UnZipper: TUnZipper;
+begin
+  ForceDirectories(AOutputDir);
+  UnZipper := TUnZipper.Create;
+  try
+    UnZipper.FileName := AZipFileName;
+    UnZipper.OutputPath := AOutputDir;
+    UnZipper.UnZipAllFiles;
+  finally
+    UnZipper.Free;
+  end;
+  Result := ReadTextFile(IncludeTrailingPathDelimiter(AOutputDir) + AEntryName);
+  DeleteDirectoryTree(AOutputDir);
+end;
+
+procedure TSimpleLogTest.Test40_ArchiveAndColorScopeDefaults;
+var
+  Log: TSimpleLog;
+begin
+  Log := TSimpleLog.FileLog(FLogFile);
+  AssertFalse('Archiving should be off by default', Log.ArchiveLogFiles);
+  AssertEquals('Default archive count', DEFAULT_MAX_ROTATE_FILES, Log.MaxRotateFiles);
+  AssertTrue('Default color scope should be level only', Log.ColorScope = ccsLevel);
+
+  Log := Log.SetArchiveLogFiles(True).SetMaxRotateFiles(3).SetColorScope(ccsLine);
+  AssertTrue('Archiving should be enabled', Log.ArchiveLogFiles);
+  AssertEquals('Archive count should be configurable', 3, Log.MaxRotateFiles);
+  AssertTrue('Color scope should be configurable', Log.ColorScope = ccsLine);
+
+  AssertEquals('Archive count should clamp to 1', 1, Log.SetMaxRotateFiles(0).MaxRotateFiles);
+  AssertEquals('Archive count should clamp to the maximum', MAX_ROTATE_FILES,
+    Log.SetMaxRotateFiles(MAX_ROTATE_FILES + 1).MaxRotateFiles);
+end;
+
+procedure TSimpleLogTest.Test41_ArchiveRotationCreatesZip;
+var
+  Log: TSimpleLog;
+  ArchivedText: string;
+begin
+  Log := TSimpleLog.FileLog(FLogFile)
+    .SetMaxFileSize(1024)
+    .SetArchiveLogFiles(True);
+  FillAndRotate(Log, 'first-archive');
+
+  AssertTrue('Rotation should create the first archive', FileExists(FLogFile + '.1.zip'));
+  AssertFalse('Archiving should not leave a plain backup', FileExists(FLogFile + '.1'));
+  AssertFalse('Archiving should not leave a temporary archive', FileExists(FLogFile + '.zip.tmp'));
+  AssertLogContains(FLogFile, 'after first-archive');
+  AssertFalse('The active log should start fresh after archiving',
+    Pos('first-archive ', ReadTextFile(FLogFile)) > 0);
+
+  ArchivedText := ReadArchivedLog(FLogFile + '.1.zip',
+    FTestDir + PathDelim + 'unzipped', ExtractFileName(FLogFile));
+  AssertTrue('The archive should hold the rotated log', Pos('first-archive ', ArchivedText) > 0);
+end;
+
+procedure TSimpleLogTest.Test42_ArchiveRotationKeepsNewestArchives;
+var
+  Log: TSimpleLog;
+  UnzipDir: string;
+begin
+  Log := TSimpleLog.FileLog(FLogFile)
+    .SetMaxFileSize(1024)
+    .SetArchiveLogFiles(True)
+    .SetMaxRotateFiles(2);
+  FillAndRotate(Log, 'batch-1');
+  FillAndRotate(Log, 'batch-2');
+  FillAndRotate(Log, 'batch-3');
+  FillAndRotate(Log, 'batch-4');
+
+  UnzipDir := FTestDir + PathDelim + 'unzipped';
+  AssertTrue('Newest archive should be number 1',
+    Pos('batch-4 ', ReadArchivedLog(FLogFile + '.1.zip', UnzipDir, ExtractFileName(FLogFile))) > 0);
+  AssertTrue('Older archive should be number 2',
+    Pos('batch-3 ', ReadArchivedLog(FLogFile + '.2.zip', UnzipDir, ExtractFileName(FLogFile))) > 0);
+  AssertFalse('Archives beyond the limit should be dropped', FileExists(FLogFile + '.3.zip'));
+end;
+
+procedure TSimpleLogTest.Test43_FailedArchivePreservesLog;
+var
+  Log: TSimpleLog;
+  ActiveContent: string;
+begin
+  ActiveContent := StringOfChar('D', 1500);
+  WriteTextFile(FLogFile, ActiveContent);
+  // A directory at the temporary archive path makes archiving fail.
+  AssertTrue('Archive failure fixture directory should be created',
+    CreateDir(FLogFile + '.zip.tmp'));
+
+  Log := TSimpleLog.FileLog(FLogFile)
+    .SetMaxFileSize(1024)
+    .SetArchiveLogFiles(True);
+  Log.Info('message after failed archive');
+
+  AssertLogContains(FLogFile, ActiveContent);
+  AssertLogContains(FLogFile, 'message after failed archive');
+  AssertFalse('A failed archive should not create an archive', FileExists(FLogFile + '.1.zip'));
+end;
+
+procedure TSimpleLogTest.Test44_FailedArchiveRaisesWhenConfigured;
+var
+  Log: TSimpleLog;
+  ActiveContent: string;
+  ErrorRaised: Boolean;
+begin
+  ActiveContent := StringOfChar('E', 1500);
+  WriteTextFile(FLogFile, ActiveContent);
+  AssertTrue('Archive failure fixture directory should be created',
+    CreateDir(FLogFile + '.zip.tmp'));
+
+  Log := TSimpleLog.FileLog(FLogFile)
+    .SetMaxFileSize(1024)
+    .SetArchiveLogFiles(True)
+    .SetErrorMode(lemRaise);
+  ErrorRaised := False;
+  try
+    Log.Info('message rejected by failed archive');
+  except
+    on E: ESimpleLogError do
+      ErrorRaised := True;
+  end;
+
+  AssertTrue('Raise mode should report an archive failure', ErrorRaised);
+  AssertTrue('A failed archive should preserve the active log exactly',
+    ReadTextFile(FLogFile) = ActiveContent + LineEnding);
+end;
+
+procedure TSimpleLogTest.Test45_ColorScopeLevelOnly;
+var
+  Log: TSimpleLog;
+  CapturedOutput: string;
+  CaptureFile: string;
+begin
+  CaptureFile := FTestDir + PathDelim + 'console.log';
+
+  Log := TSimpleLog.Console.SetColorMode(ccmAlways);
+  CapturedOutput := CaptureConsoleOutput(CaptureFile, Log);
+  AssertTrue('Level-only output should contain the level and message',
+    Pos('[WARNING] redirected color test', StringReplace(CapturedOutput, #27'[0m', '',
+      [rfReplaceAll])) > 0);
+  {$IFDEF UNIX}
+  AssertEquals('Level-only output should not color the timestamp', '[', Copy(CapturedOutput, 1, 1));
+  AssertTrue('Level-only output should color the level tag',
+    Pos(#27'[33m[WARNING]'#27'[0m redirected color test', CapturedOutput) > 0);
+
+  Log := Log.SetColorScope(ccsLine);
+  CapturedOutput := CaptureConsoleOutput(CaptureFile, Log);
+  AssertEquals('Line output should start with a color escape', #27, Copy(CapturedOutput, 1, 1));
+  AssertTrue('Line output should reset after the message',
+    Pos('redirected color test'#27'[0m', CapturedOutput) > 0);
   {$ENDIF}
 end;
 

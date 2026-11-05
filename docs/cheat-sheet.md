@@ -75,6 +75,12 @@ Logger := Logger.SetSilent(False);              // Re-enable output
 Logger := Logger.SetColorMode(ccmAuto);         // Colors only on a terminal (default)
 Logger := Logger.SetColorMode(ccmAlways);       // Always request colors
 Logger := Logger.SetColorMode(ccmNever);        // Always use plain output
+Logger := Logger.SetColorScope(ccsLevel);       // Color only [LEVEL] (default)
+Logger := Logger.SetColorScope(ccsLine);        // Color the whole line
+
+// Zip archiving of rotated logs
+Logger := Logger.SetArchiveLogFiles(True);      // app.log.1.zip, app.log.2.zip, ...
+Logger := Logger.SetMaxRotateFiles(5);          // Keep 5 archives (default 10)
 
 // File I/O errors
 Logger := Logger.SetErrorMode(lemSilent);       // Ignore logging failures (default)

@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Release [1.1.0] - 2026-11-05
+
+### Added
+
+- Added optional zip archiving of rotated logs with `SetArchiveLogFiles` and
+  `SetMaxRotateFiles`. Archives are numbered newest first
+  (`app.log.1.zip` ... `app.log.N.zip`); the default limit is 10, maximum 255.
+  Contributed by donvenchenzo (#5).
+- Added `TConsoleColorScope` and `SetColorScope` to color only the `[LEVEL]` tag
+  (`ccsLevel`) or the whole line (`ccsLine`). Requested in #3.
+- Added `ColorScope`, `ArchiveLogFiles`, and `MaxRotateFiles` read-only
+  properties.
+
+### Changed
+
+- Console colors now apply only to the `[LEVEL]` tag by default. Use
+  `SetColorScope(ccsLine)` for the 1.0 whole-line coloring.
+
+### Fixed
+
+- Archiving never deletes the active log unless its archive was written, and
+  reports failures through `ErrorMode` like plain rotation.
+
 ## Release [1.0.0] - 2026-07-30
 
 ### Added

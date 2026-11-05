@@ -45,10 +45,10 @@ type
     class function CreateLogger(AOutputs: TOutputDestinations; const AFileName: string): TSimpleLog; static;
     function ShouldLog(ALevel: TLogLevel): Boolean;
     function ShouldUseColors: Boolean;
-    procedure WriteColored(const AText: string; ALevel: TLogLevel);
+    procedure WriteColored(const AText: string; ALevel: TLogLevel; ATagOnly: Boolean);
     procedure WriteToConsole(const APrefix, ALevelTag, ASuffix: string; ALevel: TLogLevel);
     procedure WriteToFile(const AMessage: string);
-    procedure SetConsoleColor(ALevel: TLogLevel);
+    procedure SetConsoleColor(ALevel: TLogLevel; ATagOnly: Boolean);
     function GetLogLevelStr(ALevel: TLogLevel): string;
     procedure LogFmt(ALevel: TLogLevel; const AFormat: string; const AArgs: array of const);
     procedure WriteLogEntry(ALevel: TLogLevel; const AMessage: string);
@@ -340,17 +340,22 @@ begin
   end;
 end;
 
-procedure TSimpleLog.SetConsoleColor(ALevel: TLogLevel);
+procedure TSimpleLog.SetConsoleColor(ALevel: TLogLevel; ATagOnly: Boolean);
 {$IFDEF WINDOWS}
 var
   ConsoleHandle: THandle;
 {$ENDIF}
 begin
+  // INFO is blue only on the level tag; whole INFO lines keep the default color.
   {$IFDEF WINDOWS}
   ConsoleHandle := THandle(TextRec(Output).Handle);
   case ALevel of
     llDebug: SetConsoleTextAttribute(ConsoleHandle, 8);    // Gray
-    llInfo: SetConsoleTextAttribute(ConsoleHandle, 7);     // White
+    llInfo:
+      if ATagOnly then
+        SetConsoleTextAttribute(ConsoleHandle, 9)          // Blue
+      else
+        SetConsoleTextAttribute(ConsoleHandle, 7);         // White
     llWarning: SetConsoleTextAttribute(ConsoleHandle, 14); // Yellow
     llError: SetConsoleTextAttribute(ConsoleHandle, 12);   // Red
     llFatal: SetConsoleTextAttribute(ConsoleHandle, 79);   // White on Red
@@ -359,7 +364,11 @@ begin
   {$IFDEF UNIX}
   case ALevel of
     llDebug: System.Write(#27'[90m');    // Gray
-    llInfo: System.Write(#27'[0m');      // Default
+    llInfo:
+      if ATagOnly then
+        System.Write(#27'[34m')          // Blue
+      else
+        System.Write(#27'[0m');          // Default
     llWarning: System.Write(#27'[33m');  // Yellow
     llError: System.Write(#27'[31m');    // Red
     llFatal: System.Write(#27'[97;41m'); // White on Red
@@ -380,7 +389,8 @@ begin
   end;
 end;
 
-procedure TSimpleLog.WriteColored(const AText: string; ALevel: TLogLevel);
+procedure TSimpleLog.WriteColored(const AText: string; ALevel: TLogLevel;
+  ATagOnly: Boolean);
 {$IFDEF WINDOWS}
 var
   ConsoleHandle: THandle;
@@ -396,7 +406,7 @@ begin
   HaveOriginalAttributes := GetConsoleScreenBufferInfo(ConsoleHandle, ConsoleInfo);
   {$ENDIF}
 
-  SetConsoleColor(ALevel);
+  SetConsoleColor(ALevel, ATagOnly);
   try
     Write(AText);
   finally
@@ -417,11 +427,11 @@ begin
   if not ShouldUseColors then
     Write(APrefix, ALevelTag, ASuffix)
   else if FColorScope = ccsLine then
-    WriteColored(APrefix + ALevelTag + ASuffix, ALevel)
+    WriteColored(APrefix + ALevelTag + ASuffix, ALevel, False)
   else
   begin
     Write(APrefix);
-    WriteColored(ALevelTag, ALevel);
+    WriteColored(ALevelTag, ALevel, True);
     Write(ASuffix);
   end;
   WriteLn;

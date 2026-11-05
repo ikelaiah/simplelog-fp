@@ -95,6 +95,7 @@ type
     procedure Test43_FailedArchivePreservesLog;
     procedure Test44_FailedArchiveRaisesWhenConfigured;
     procedure Test45_ColorScopeLevelOnly;
+    procedure Test46_InfoTagColor;
   end;
 
 implementation
@@ -1327,6 +1328,44 @@ begin
   AssertEquals('Line output should start with a color escape', #27, Copy(CapturedOutput, 1, 1));
   AssertTrue('Line output should reset after the message',
     Pos('redirected color test'#27'[0m', CapturedOutput) > 0);
+  {$ENDIF}
+end;
+
+procedure TSimpleLogTest.Test46_InfoTagColor;
+var
+  Log: TSimpleLog;
+  CapturedOutput: string;
+  CaptureFile: string;
+
+  function CaptureInfo: string;
+  begin
+    Assign(Output, CaptureFile);
+    Rewrite(Output);
+    try
+      Log.Info('info color test');
+      Flush(Output);
+    finally
+      Close(Output);
+      Assign(Output, '');
+      Rewrite(Output);
+    end;
+    Result := ReadTextFile(CaptureFile);
+  end;
+
+begin
+  CaptureFile := FTestDir + PathDelim + 'console.log';
+
+  Log := TSimpleLog.Console.SetColorMode(ccmAlways);
+  CapturedOutput := CaptureInfo;
+  AssertTrue('Info output should contain the message', Pos('info color test', CapturedOutput) > 0);
+  {$IFDEF UNIX}
+  AssertTrue('Level-only output should color the INFO tag blue',
+    Pos(#27'[34m[INFO]'#27'[0m info color test', CapturedOutput) > 0);
+
+  Log := Log.SetColorScope(ccsLine);
+  CapturedOutput := CaptureInfo;
+  AssertFalse('Whole-line INFO output should keep the default color',
+    Pos(#27'[34m', CapturedOutput) > 0);
   {$ENDIF}
 end;
 

@@ -3,9 +3,6 @@ program TestSimpleLog;
 {$mode objfpc}{$H+}
 
 uses
-  {$IFDEF UNIX}
-  cthreads,
-  {$ENDIF}
   SysUtils, SimpleLog;
 
 procedure TestBasicFunctionality;
@@ -98,20 +95,23 @@ end;
 procedure TestArchivingLogFiles;
 var
   Log: TSimpleLog;
-  i : Word;
+  i: Integer;
 begin
   WriteLn('Testing archiving log files...');
 
-  Log := TSimpleLog.Console
+  Log := TSimpleLog.FileLog('archiving.log')
     .SetMinLevel(llInfo)
-    .SetFile('archiving.log')
-    .SetOutputs([odConsole, odFile]);
-    .SetMaxFileSize(1 * 512 * 512);
-  Log.ArchiveLogFiles := True;
-  Log.MaxRotateFiles := 3;
+    .SetMaxFileSize(16 * 1024)
+    .SetArchiveLogFiles(True)
+    .SetMaxRotateFiles(3);
 
-  for i := 0 to 20000 do
-    Log.Info('Archiving log files works!');
+  for i := 1 to 2000 do
+    Log.Info('Archiving log files works! %d', [i]);
+
+  if not FileExists('archiving.log.1.zip') then
+    raise Exception.Create('Expected archiving.log.1.zip');
+  if FileExists('archiving.log.4.zip') then
+    raise Exception.Create('Expected at most 3 archives');
 
   WriteLn('✓ Archiving log files tests passed');
 end;

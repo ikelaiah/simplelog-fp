@@ -90,10 +90,16 @@ function SetMaxFileSize(ASize: Int64): TSimpleLog;
 function SetSilent(ASilent: Boolean): TSimpleLog;
 function SetColorMode(AMode: TConsoleColorMode): TSimpleLog;
 function SetUseColors(AUseColors: Boolean): TSimpleLog;
+function SetColorScope(AScope: TConsoleColorScope): TSimpleLog;
 function SetErrorMode(AMode: TLogErrorMode): TSimpleLog;
+function SetArchiveLogFiles(AArchive: Boolean): TSimpleLog;
+function SetMaxRotateFiles(ACount: Integer): TSimpleLog;
 ```
 
 `SetMaxFileSize` clamps values below 1 KiB to 1 KiB.
+
+`SetMaxRotateFiles` clamps to `1..MAX_ROTATE_FILES` (255). The default is
+`DEFAULT_MAX_ROTATE_FILES` (10).
 
 `SetUseColors` is a convenience API retained for compatibility:
 
@@ -111,6 +117,13 @@ TConsoleColorMode = (ccmAuto, ccmAlways, ccmNever);
 - `ccmAlways` requests colors even when output is redirected. On Unix this
   writes ANSI escape sequences.
 - `ccmNever` writes plain console text.
+
+```pascal
+TConsoleColorScope = (ccsLevel, ccsLine);
+```
+
+- `ccsLevel` is the default. Only the `[LEVEL]` tag is colored.
+- `ccsLine` colors the whole line (the 1.0 behavior).
 
 On Windows, SimpleLog restores the console attributes that were active before
 each message rather than imposing a hardcoded default.
@@ -164,6 +177,25 @@ produce an oversized backup on the next write.
 Rotation is designed for one process. Multiple processes must not write or
 rotate the same file concurrently.
 
+### Zip Archiving
+
+With `SetArchiveLogFiles(True)`, rotation zips the active file instead of
+renaming it to `.1`:
+
+1. The active file is zipped to `<log>.zip.tmp`.
+2. The oldest archive, `<log>.<MaxRotateFiles>.zip`, is removed.
+3. Remaining archives shift up by one: `.1.zip` becomes `.2.zip`, and so on.
+4. The new archive becomes `<log>.1.zip`.
+5. The active file is removed; the pending write starts a new one.
+
+Each archive holds one entry named after the log file. Archiving runs in the
+calling thread under the logging lock, so the write that triggers it waits for
+the zip to finish.
+
+If any step fails before step 5, the active file is left intact and the error
+follows the `ErrorMode` policy. Archives numbered above `MaxRotateFiles` (for
+example after lowering the limit) are left untouched.
+
 ## Timestamps
 
 The fixed text format is:
@@ -211,8 +243,11 @@ property MinLevel: TLogLevel;
 property MaxFileSize: Int64;
 property Silent: Boolean;
 property ColorMode: TConsoleColorMode;
+property ColorScope: TConsoleColorScope;
 property UseColors: Boolean;
 property ErrorMode: TLogErrorMode;
+property ArchiveLogFiles: Boolean;
+property MaxRotateFiles: Integer;
 ```
 
 `UseColors` is `False` only for `ccmNever`; inspect `ColorMode` when the
@@ -227,6 +262,7 @@ TOutputDestination = (odConsole, odFile);
 TOutputDestinations = set of TOutputDestination;
 
 TConsoleColorMode = (ccmAuto, ccmAlways, ccmNever);
+TConsoleColorScope = (ccsLevel, ccsLine);
 TLogErrorMode = (lemSilent, lemRaise);
 ```
 
